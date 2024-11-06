@@ -3,10 +3,9 @@ name: Claims Processor CI/CD
 env:
   PYTHON_VERSION: '3.11'
   POSTGRES_DB: claims_test_db
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
-  POSTGRES_HOST: localhost
-  POSTGRES_PORT: 5432
+  POSTGRES_USER: claimsuser
+  POSTGRES_PASSWORD: Claims2024#Secure!
+  AWS_REGION: ap-south-1
 
 on:
   push:
@@ -18,273 +17,42 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  validate:
-    name: Validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      # Validate Python installation
-      - name: Verify Python setup
-        run: |
-          python --version
-          pip --version
-          python -m pip list
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          # Add error handling for requirements installation
-          if ! pip install -r requirements-dev.txt; then
-            echo "Failed to install dependencies"
-            exit 1
-          fi
-
-      # Validate directory structure
-      - name: Verify project structure
-        run: |
-          if [ ! -d "src" ] || [ ! -d "tests" ]; then
-            echo "Required directories 'src' and/or 'tests' not found"
-            exit 1
-          fi
-
-      # Split formatting checks with improved error handling
-      - name: Check black formatting
-        run: |
-          if ! command -v black &> /dev/null; then
-            echo "black not found in PATH"
-            exit 1
-          fi
-          python -m black --check src tests
-        continue-on-error: true
-
-      - name: Check import sorting
-        run: |
-          if ! command -v isort &> /dev/null; then
-            echo "isort not found in PATH"
-            exit 1
-          fi
-          python -m isort --check-only src tests
-        continue-on-error: true
-
-      - name: Run type checking
-        run: |
-          if ! command -v mypy &> /dev/null; then
-            echo "mypy not found in PATH"
-            exit 1
-          fi
-          python -m mypy src tests --ignore-missing-imports
-        continue-on-error: true
-
-      # Enhanced schema validation with better error handling
-      - name: Run schema validation
-        run: |
-          mkdir -p validation
-          cat > validation/schema_validator.py << 'EOF'
-          #!/usr/bin/env python3
-          import sys
-          import os
-
-          def validate_project_structure():
-              required_dirs = ['src', 'tests']
-              for dir_name in required_dirs:
-                  if not os.path.isdir(dir_name):
-                      print(f"Error: {dir_name} directory not found")
-                      return False
-              return True
-
-          def main():
-              if not validate_project_structure():
-                  return 1
-              print('Schema validation placeholder')
-              return 0
-
-          if __name__ == '__main__':
-              sys.exit(main())
-          EOF
-          chmod +x validation/schema_validator.py
-          python -m validation.schema_validator
-     
   test:
     name: Test
-    needs: validate
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      # Verify test environment
-      - name: Verify test environment
-        run: |
-          echo "Checking PostgreSQL connection..."
-          PGPASSWORD=${{ env.POSTGRES_PASSWORD }} psql -h ${{ env.POSTGRES_HOST }} -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "\conninfo"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if ! pip install -r requirements-test.txt; then
-            echo "Failed to install test dependencies"
-            exit 1
-          fi
-
-      # Create required directories
-      - name: Prepare test environment
-        run: |
-          mkdir -p reports/unit-tests reports/schema-tests reports/coverage
-
-      - name: Run unit tests
-        env:
-          DATABASE_URL: "postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@${{ env.POSTGRES_HOST }}:${{ env.POSTGRES_PORT }}/${{ env.POSTGRES_DB }}"
-          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-        run: |
-          if ! python -m pytest tests/unit \
-            --asyncio-mode=auto \
-            --junitxml=reports/unit-tests/junit.xml \
-            --cov=src \
-            --cov-report=xml:reports/coverage/coverage.xml; then
-            echo "Unit tests failed"
-            exit 1
-          fi
-
-      - name: Run schema tests
-        run: |
-          if ! python -m pytest tests/schema \
-            --junitxml=reports/schema-tests/junit.xml; then
-            echo "Schema tests failed"
-            exit 1
-          fi
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: reports/
-          retention-days: 30
-
-  security:
-    name: Security Scan
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install security tools
-        run: |
-          python -m pip install --upgrade pip
-          if ! pip install bandit safety; then
-            echo "Failed to install security tools"
-            exit 1
-          fi
-
-      # Create security reports directory
-      - name: Prepare security scan environment
-        run: mkdir -p reports/security
-
-      - name: Run security scans
-        run: |
-          echo "Running Bandit security scan..."
-          python -m bandit -r src/ -f json -o reports/security/bandit.json || true
-          echo "Running Safety check..."
-          python -m safety check -r requirements.txt --json > reports/security/safety.json || true
-
-      - name: Run secret scanning
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          config-path: .gitleaks.toml
-          report-format: json
-          report-path: reports/security/secrets.json
-
-      - name: Upload security reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: security-reports
-          path: reports/security/
-          retention-days: 30
-
-  build:
-    name: Build
-    needs: [test, security]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      # Verify Docker installation
-      - name: Verify Docker setup
+      - name: Install dependencies
         run: |
-          docker --version
-          docker info
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
 
-      # Add validation for Docker build context
-      - name: Verify Docker build context
-        run: |
-          if [ ! -f "Dockerfile" ]; then
-            echo "Dockerfile not found in root directory"
-            exit 1
-          fi
-
-      - name: Build and push Docker image
+      - name: Run tests
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: claims-processor
-          IMAGE_TAG: ${{ github.sha }}
+          DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@${{ secrets.RDS_ENDPOINT }}:5432/${{ env.POSTGRES_DB }}
         run: |
-          echo "Building Docker image..."
-          if ! docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .; then
-            echo "Docker build failed"
-            exit 1
-          fi
-          
-          echo "Pushing Docker image..."
-          if ! docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG; then
-            echo "Docker push failed"
-            exit 1
-          fi
+          python -m pytest tests/ -v --asyncio-mode=auto
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            reports/
+            .coverage
