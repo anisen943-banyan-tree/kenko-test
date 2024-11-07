@@ -95,7 +95,8 @@ jobs:
           
       - name: Run type checking
         run: |
-          mypy src/ tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt --verbosity 0
+          mkdir -p reports/mypy
+          mypy src/ tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
 
       - name: Run pylint
         run: |
