@@ -136,7 +136,7 @@ jobs:
       # Set up SSH agent and load the SSH key for tunnel access
       - name: Set up SSH key
         run: |
-          echo "${{ secrets.SSH_KEY }}" > /tmp/assistant-handler.pem
+          echo "${{ secrets.SSH_KEY }}" | tr -d '\r' > /tmp/assistant-handler.pem
           chmod 400 /tmp/assistant-handler.pem
 
       # Establish SSH Tunnel to RDS via EC2 instance
