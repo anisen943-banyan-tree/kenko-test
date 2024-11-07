@@ -66,19 +66,14 @@ jobs:
       - name: Notify Google Chat
         if: always()
         run: |
-          MESSAGE=$(cat << EOF
-          *Security Scan Results*
-          Status: ${{ steps.process_scan.outputs.status }}
-          Repository: ${{ github.repository }}
-          Branch: ${{ github.ref_name }}
-          Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          EOF
+          MESSAGE=$(cat <<EOF
+          {
+            "text": "*Testing Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          }
+EOF
           )
           
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \"$MESSAGE\"}" \
-            "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
+          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
   code-quality:
     name: Code Quality Checks
@@ -253,3 +248,9 @@ EOF
           
           MESSAGE=$(cat <<EOF
           {
+            "text": "*Testing Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          }
+EOF
+          )
+          
+          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
