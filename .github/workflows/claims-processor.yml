@@ -80,8 +80,8 @@ jobs:
             -d "{\"text\": \"$MESSAGE\"}" \
             "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
-  validate:
-    name: Code Quality
+  code-quality:
+    name: Code Quality Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -94,8 +94,6 @@ jobs:
           
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install black isort mypy pylint
           pip install -r requirements-dev.txt
           
       - name: Check formatting
@@ -119,31 +117,14 @@ jobs:
           path: |
             reports/black.txt
             reports/isort.txt
+            reports/mypy
             reports/mypy.txt
-            reports/mypy/
             reports/pylint.txt
             reports/pylint.json
 
-      - name: Notify Google Chat on Validation Completion
-        if: always()
-        run: |
-          STATUS=":x: Failure"
-          if [[ "${{ job.status }}" == "success" ]]; then
-            STATUS=":white_check_mark: Success"
-          fi
-          
-          MESSAGE=$(cat <<EOF
-          {
-            "text": "*Code Quality Check Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-          }
-EOF
-          )
-          
-          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
-
   test:
     name: Test
-    needs: [security-scan, validate]
+    needs: [security-scan, code-quality]
     runs-on: ubuntu-latest
     
     services:
