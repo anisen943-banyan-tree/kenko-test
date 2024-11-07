@@ -133,9 +133,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
 
+      # Set up SSH agent and load the SSH key for tunnel access
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.SSH_KEY }}" > /tmp/assistant-handler.pem
+          chmod 400 /tmp/assistant-handler.pem
+
+      # Establish SSH Tunnel to RDS via EC2 instance
+      - name: Start SSH Tunnel to RDS
+        run: |
+          ssh -f -N -L 5433:${{ secrets.RDS_HOST }}:5432 -i /tmp/assistant-handler.pem ec2-user@13.201.87.70
+        env:
+          SSH_AUTH_SOCK: /tmp/assistant-handler.pem
+
+      # Run Tests
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@${{ secrets.RDS_HOST }}:${{ secrets.RDS_PORT }}/${{ secrets.RDS_DB_NAME }}
+          DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@127.0.0.1:5433/${{ secrets.RDS_DB_NAME }}
           PYTHONPATH: ${{ github.workspace }}/src
         run: |
           mkdir -p reports/tests
