@@ -59,10 +59,10 @@ jobs:
           {
             "text": "*Security Scan Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           }
-          EOF
+EOF
           )
           
-          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" ${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}
+          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
   validate:
     name: Code Quality
@@ -120,10 +120,10 @@ jobs:
           {
             "text": "*Code Quality Check Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           }
-          EOF
+EOF
           )
           
-          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" ${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}
+          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
   test:
     name: Test
@@ -202,12 +202,12 @@ jobs:
           {
             "text": "*Testing Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           }
-          EOF
+EOF
           )
           
-          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" ${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}
+          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
- build:
+  build:
     name: Build and Push Docker Image
     needs: test
     runs-on: ubuntu-latest
@@ -256,9 +256,4 @@ jobs:
           
           MESSAGE=$(cat <<EOF
           {
-            "text": "*Build and Push Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}${IMAGE_INFO}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-          }
-          EOF
-          )
-          
-          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" ${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}
+            "
