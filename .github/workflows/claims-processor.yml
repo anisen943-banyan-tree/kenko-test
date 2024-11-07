@@ -103,7 +103,7 @@ jobs:
           
       - name: Run type checking
         run: |
-          mypy src/ tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
+          mypy src/claims_processor tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
 
       - name: Run pylint
         run: |
