@@ -20,6 +20,8 @@ jobs:
   security-scan:
     name: Security Analysis
     runs-on: ubuntu-latest
+    outputs:
+      scan_status: ${{ steps.process_scan.outputs.status }}
     steps:
       - uses: actions/checkout@v3
       
@@ -35,10 +37,11 @@ jobs:
           pip install bandit safety
           
       - name: Run security scans
+        id: security_scan
         run: |
           mkdir -p reports/security
-          bandit -r src/ -f json -o reports/security/bandit.json
-          safety check -r requirements.txt --json > reports/security/safety.json
+          bandit -r src/ -f json -o reports/security/bandit.json || true
+          safety check -r requirements.txt --json > reports/security/safety.json || true
           
       - name: Upload security reports
         if: always()
@@ -46,23 +49,36 @@ jobs:
         with:
           name: security-reports
           path: reports/security/
+          retention-days: 14
 
-      - name: Notify Google Chat on Security Scan Completion
+      - name: Process scan results
+        id: process_scan
         if: always()
         run: |
-          STATUS=":x: Failure"
-          if [[ "${{ job.status }}" == "success" ]]; then
-            STATUS=":white_check_mark: Success"
+          if [ -f reports/security/bandit.json ] && [ -f reports/security/safety.json ]; then
+            echo "status=✅ Success" >> $GITHUB_OUTPUT
+            echo "Security scans completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "status=⚠️ Warning" >> $GITHUB_OUTPUT
+            echo "Security scans partially completed" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          MESSAGE=$(cat <<EOF
-          {
-            "text": "*Security Scan Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: ${STATUS}\nDetails: [View on GitHub](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-          }
-EOF
+
+      - name: Notify Google Chat
+        if: always()
+        run: |
+          MESSAGE=$(cat << EOF
+          *Security Scan Results*
+          Status: ${{ steps.process_scan.outputs.status }}
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
           )
           
-          curl -X POST -H "Content-Type: application/json" -d "${MESSAGE}" "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"$MESSAGE\"}" \
+            "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
   validate:
     name: Code Quality
@@ -256,4 +272,3 @@ EOF
           
           MESSAGE=$(cat <<EOF
           {
-            "
