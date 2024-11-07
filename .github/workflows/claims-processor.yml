@@ -67,14 +67,10 @@ jobs:
         if: always()
         run: |
           STATUS="${{ steps.process_scan.outputs.status }}"
-          MESSAGE=$(cat << 'EOF'
-          {
-            "text": "*Testing Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: $STATUS\nDetails: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }
-EOF
-          )
-          
-          echo "$MESSAGE" | curl -X POST -H "Content-Type: application/json" -d @- "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"*Testing Completed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nStatus: $STATUS\nDetails: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}"
 
   code-quality:
     name: Code Quality Checks
