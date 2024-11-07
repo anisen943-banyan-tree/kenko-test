@@ -141,21 +141,27 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v3
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
+      
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
+          pip install -r requirements-dev.txt  # Include if necessary
+      
       - name: Run tests
         env:
           DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
+          PYTHONPATH: ${{ github.workspace }}/src  # Add src/ to PYTHONPATH
         run: |
           mkdir -p reports/tests
           pytest tests/ -v --cov=src --cov-report=xml --junitxml=reports/tests/junit.xml
+          
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
