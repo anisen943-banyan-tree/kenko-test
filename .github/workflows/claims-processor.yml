@@ -142,7 +142,7 @@ jobs:
       # Establish SSH Tunnel to RDS via EC2 instance
       - name: Start SSH Tunnel to RDS
         run: |
-          ssh -f -N -L 5433:${{ secrets.RDS_HOST }}:5432 -i /tmp/assistant-handler.pem ec2-user@3.108.233.205
+          ssh -o StrictHostKeyChecking=no -f -N -L 5433:${{ secrets.RDS_HOST }}:5432 -i /tmp/assistant-handler.pem ec2-user@3.108.233.205
         env:
           SSH_AUTH_SOCK: /tmp/assistant-handler.pem
 
