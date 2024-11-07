@@ -24,25 +24,21 @@ jobs:
       scan_status: ${{ steps.process_scan.outputs.status }}
     steps:
       - uses: actions/checkout@v3
-      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-          
       - name: Install security tools
         run: |
           python -m pip install --upgrade pip
           pip install bandit safety
-          
       - name: Run security scans
         id: security_scan
         run: |
           mkdir -p reports/security
           bandit -r src/ -f json -o reports/security/bandit.json || true
           safety check -r requirements.txt --json > reports/security/safety.json || true
-          
       - name: Upload security reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,7 +46,6 @@ jobs:
           name: security-reports
           path: reports/security/
           retention-days: 14
-
       - name: Process scan results
         id: process_scan
         if: always()
@@ -62,7 +57,6 @@ jobs:
             echo "status=⚠️ Warning" >> $GITHUB_OUTPUT
             echo "Security scans partially completed" >> $GITHUB_STEP_SUMMARY
           fi
-
       - name: Notify Google Chat
         if: always()
         run: |
@@ -78,37 +72,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install black isort mypy pylint lxml
           pip install -r requirements-dev.txt
-          
       - name: Create report directories
         run: |
           mkdir -p reports
           mkdir -p reports/mypy
-          
       - name: Check formatting
         run: |
           black --check src/ tests/ --diff --color > reports/black.txt || echo "Black formatting issues found"
           isort --check-only src/ tests/ --diff --color > reports/isort.txt || echo "Import sorting issues found"
-          
       - name: Run type checking
         run: |
           mypy src/claims_processor tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
-
       - name: Run pylint
         run: |
           pylint src/ tests/ --output-format=colorized > reports/pylint.txt || true
-
       - name: Upload code quality reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -125,20 +112,6 @@ jobs:
     name: Test
     needs: [security-scan, code-quality]
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v3
       
@@ -148,20 +121,26 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
       
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
-          pip install -r requirements-dev.txt  # Include if necessary
-      
+
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
-          PYTHONPATH: ${{ github.workspace }}/src  # Add src/ to PYTHONPATH
+          DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@${{ secrets.RDS_HOST }}:${{ secrets.RDS_PORT }}/${{ secrets.RDS_DB_NAME }}
+          PYTHONPATH: ${{ github.workspace }}/src
         run: |
           mkdir -p reports/tests
           pytest tests/ -v --cov=src --cov-report=xml --junitxml=reports/tests/junit.xml
-          
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -178,18 +157,15 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     steps:
       - uses: actions/checkout@v3
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
       - name: Build and push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
