@@ -1,20 +1,19 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import yaml
 import logging
 import asyncio
-from dataclasses import dataclass
+from pydantic import BaseModel, ValidationError as PydanticValidationError
 from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-@dataclass
-class AssistantConfig:
+class AssistantConfig(BaseModel):
     """Configuration for a single assistant."""
     model: str
     version: str
     timeout: int
     retry: Dict[str, int]
     instructions: str
-    validation_rules: Dict[str, any]
+    validation_rules: Dict[str, Any] = {}
 
 class AssistantInitializationError(Exception):
     """Custom exception for assistant initialization errors."""
@@ -52,12 +51,14 @@ class AssistantManager:
             for assistant_type, result in zip(self.configs.keys(), results):
                 if isinstance(result, Exception):
                     self.logger.error(
-                        f"Failed to initialize {assistant_type} assistant: {str(result)}"
+                        f"Failed to initialize {assistant_type} assistant: {str(result)}",
+                        extra={"assistant_type": assistant_type, "config": self.configs[assistant_type].dict()}
                     )
                 else:
                     self.assistants[assistant_type] = result
                     self.logger.info(
-                        f"Successfully initialized {assistant_type} assistant"
+                        f"Successfully initialized {assistant_type} assistant",
+                        extra={"assistant_type": assistant_type, "assistant_id": result}
                     )
             
             return self.assistants
@@ -75,13 +76,32 @@ class AssistantManager:
         try:
             with open(self.config_path, 'r') as f:
                 raw_config = yaml.safe_load(f)
-            
+
             configs = {}
             for assistant_type, config in raw_config['assistants'].items():
-                configs[assistant_type] = AssistantConfig(**config)
-                
+                try:
+                    # Using pydantic to validate each assistant config
+                    configs[assistant_type] = AssistantConfig(**config)
+                except PydanticValidationError as e:
+                    raise AssistantInitializationError(
+                        f"Invalid configuration for {assistant_type} assistant",
+                        "config",
+                        {"assistant_type": assistant_type, "error": e.errors()}
+                    )
             return configs
-            
+
+        except FileNotFoundError:
+            raise AssistantInitializationError(
+                "Configuration file not found",
+                "config",
+                {"config_path": self.config_path}
+            )
+        except yaml.YAMLError as e:
+            raise AssistantInitializationError(
+                "Error parsing YAML configuration",
+                "config",
+                {"error": str(e), "config_path": self.config_path}
+            )
         except Exception as e:
             raise AssistantInitializationError(
                 "Failed to load assistant configurations",
@@ -100,6 +120,7 @@ class AssistantManager:
     ) -> str:
         """Initialize a single assistant with retry logic."""
         try:
+            self.logger.info(f"Initializing {assistant_type} assistant", extra={"assistant_type": assistant_type})
             assistant = await self.client.beta.assistants.create(
                 name=f"Claims {assistant_type.capitalize()} Assistant",
                 instructions=config.instructions,
@@ -112,15 +133,24 @@ class AssistantManager:
                 }
             )
             
+            self.logger.info(
+                f"Successfully initialized {assistant_type} assistant",
+                extra={"assistant_type": assistant_type, "assistant_id": assistant.id}
+            )
+            
             return assistant.id
             
         except Exception as e:
+            self.logger.error(
+                f"Failed to initialize {assistant_type} assistant",
+                extra={"assistant_type": assistant_type, "config": config.dict(), "error": str(e)}
+            )
             raise AssistantInitializationError(
                 f"Failed to initialize {assistant_type} assistant",
                 assistant_type,
                 {
                     "error": str(e),
-                    "config": config.__dict__
+                    "config": config.dict()
                 }
             )
 
@@ -130,14 +160,27 @@ class AssistantManager:
 
     async def cleanup(self):
         """Cleanup and delete all assistants."""
+        cleaned_up_count = 0
+        total_assistants = len(self.assistants)
+
         for assistant_type, assistant_id in self.assistants.items():
             try:
                 await self.client.beta.assistants.delete(assistant_id)
-                self.logger.info(f"Cleaned up {assistant_type} assistant")
+                self.logger.info(
+                    f"Cleaned up {assistant_type} assistant",
+                    extra={"assistant_type": assistant_type, "assistant_id": assistant_id}
+                )
+                cleaned_up_count += 1
             except Exception as e:
                 self.logger.error(
-                    f"Failed to cleanup {assistant_type} assistant: {str(e)}"
+                    f"Failed to cleanup {assistant_type} assistant: {str(e)}",
+                    extra={"assistant_type": assistant_type, "assistant_id": assistant_id}
                 )
+
+        self.logger.info(
+            "Cleanup summary",
+            extra={"total_assistants": total_assistants, "cleaned_up_count": cleaned_up_count}
+        )
 
 class AssistantFactory:
     """Factory for creating and managing assistant instances."""
@@ -158,10 +201,29 @@ class AssistantFactory:
 # Usage example
 async def initialize_assistants(config_path: str, openai_api_key: str):
     async with AssistantFactory(openai_api_key, config_path) as assistant_manager:
-        # Get specific assistant
-        categorization_assistant = await assistant_manager.get_assistant('categorization')
-        
-        # Use the assistant
-        if categorization_assistant:
-            # Process claims...
-            pass
+        try:
+            # Get specific assistant
+            categorization_assistant = await assistant_manager.get_assistant('categorization')
+            
+            # Use the assistant
+            if categorization_assistant:
+                # Process claims...
+                pass
+            else:
+                logging.error("Categorization assistant not initialized")
+        except Exception as e:
+            logging.error(f"Error during assistant initialization: {str(e)}")
+
+# Sample claim processing function
+async def process_claims(assistant_manager: AssistantManager, claims: List[Dict[str, Any]]):
+    categorization_assistant = await assistant_manager.get_assistant('categorization')
+    if not categorization_assistant:
+        raise ValueError("Categorization assistant not initialized")
+
+    for claim in claims:
+        # Example of using the assistant to process a claim
+        result = await assistant_manager.client.beta.assistants.invoke(
+            categorization_assistant,
+            input=claim
+        )
+        print(f"Processed claim {claim['id']}: {result}")
