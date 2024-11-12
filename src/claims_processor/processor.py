@@ -1,5 +1,7 @@
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime
+import pytest
+from claims_processor.processor import ClaimsProcessor  # Adjusted import statement
 
 class ClaimsProcessor:
     """Main claims processing implementation."""
@@ -20,3 +22,16 @@ class ClaimsProcessor:
         """Validate claim data."""
         # Placeholder for validation logic
         return True
+
+@pytest.mark.asyncio
+async def test_process_claim():
+    processor = ClaimsProcessor()
+    claim_data = {
+        "claim_id": "TEST001",
+        "member_id": "MEM001",
+        "claim_date": datetime.now().isoformat()
+    }
+    
+    result = await processor.process_claim(claim_data)
+    assert result["claim_id"] == claim_data["claim_id"]
+    assert result["status"] == "pending"
