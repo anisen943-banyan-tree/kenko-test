@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import jwt
 import os
 import asyncio
+from ..routers.institutions import InstitutionManager  # Add this import
 
 # Define allowed origins for testing
 origins = [
@@ -77,10 +78,16 @@ async def async_client():
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 
+@pytest.fixture
+async def mock_db_pool():
+    """Mock database pool fixture."""
+    return AsyncMock()
+
 @pytest.mark.asyncio
-async def test_list_institutions_success(async_client):
+async def test_list_institutions_success(async_client, mock_db_pool):
     """Test that the list of institutions is retrieved successfully."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routers.institutions.get_db_pool', return_value=mock_db_pool), \
+         patch('src.api.routers.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         with patch('routers.institutions.InstitutionManager.list_institutions', new_callable=AsyncMock) as mock_list:
             institutions_data = InstitutionFactory.create_batch(2)
@@ -96,7 +103,7 @@ async def test_list_institutions_success(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_success(async_client):
     """Test that a new institution can be created successfully."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify, \
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
          patch('routers.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_create.return_value = InstitutionFactory()
@@ -117,7 +124,7 @@ async def test_create_institution_success(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_duplicate_code(async_client):
     """Test that creating an institution with a duplicate code fails."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify, \
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
          patch('routers.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_create.side_effect = UniqueViolationError("duplicate key value violates unique constraint")
@@ -135,7 +142,7 @@ async def test_create_institution_duplicate_code(async_client):
 @pytest.mark.asyncio
 async def test_update_institution_success(async_client):
     """Test that an existing institution can be updated successfully."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify, \
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
          patch('routers.institutions.InstitutionManager.update_institution', new_callable=AsyncMock) as mock_update:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_update.return_value = InstitutionFactory()
@@ -156,7 +163,7 @@ async def test_update_institution_success(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_user_success(async_client):
     """Test that a new user can be created for an institution successfully."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify, \
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
          patch('routers.institutions.fetch_institution', new_callable=AsyncMock) as mock_fetch, \
          patch('routers.institutions.create_user_institution_mapping', new_callable=AsyncMock) as mock_mapping, \
          patch('routers.institutions.InstitutionManager.conn.fetchrow', new_callable=AsyncMock) as mock_fetchrow:
@@ -179,7 +186,7 @@ async def test_create_institution_user_success(async_client):
 @pytest.mark.asyncio
 async def test_list_institution_users_success(async_client):
     """Test that the list of users for an institution is retrieved successfully."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify, \
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
          patch('routers.institutions.fetch_institution', new_callable=AsyncMock) as mock_fetch, \
          patch('routers.institutions.InstitutionManager.conn.fetch', new_callable=AsyncMock) as mock_fetch_users:
         
@@ -198,7 +205,7 @@ async def test_list_institution_users_success(async_client):
 @pytest.mark.asyncio
 async def test_rate_limiting(async_client):
     """Test that rate limiting is enforced on the list_institutions endpoint."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         # Perform 10 allowed requests
         for _ in range(10):
@@ -212,7 +219,7 @@ async def test_rate_limiting(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_invalid_data(async_client):
     """Test that creating an institution with invalid data fails."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         invalid_institution_data = {
             "name": "",  # Missing name
@@ -244,7 +251,7 @@ async def test_unauthorized_access_invalid_token(async_client):
 @pytest.mark.asyncio
 async def test_unauthorized_access_non_admin_role(async_client):
     """Test that accessing endpoints with a non-admin JWT token is forbidden."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify:
         mock_verify.side_effect = HTTPException(status_code=403, detail="Insufficient permissions")
         headers = {"Authorization": "Bearer non_admin_jwt_token"}
         response = await async_client.get("/admin/institutions/", headers=headers)
@@ -291,7 +298,7 @@ async def test_create_institution_malformed_token(async_client):
 @pytest.mark.asyncio
 async def test_concurrent_create_institution(async_client):
     """Test creating institutions concurrently to detect race conditions."""
-    with patch('routers.institutions.verify_admin_token') as mock_verify, \
+    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
          patch('routers.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         # Simulate unique constraint violation on second concurrent request
@@ -320,3 +327,46 @@ async def test_concurrent_create_institution(async_client):
         assert responses[0].status_code == 200, "Expected status 200 for first concurrent institution creation"
         assert responses[1].status_code == 400, "Expected status 400 for duplicate institution code in concurrent creation"
         assert responses[1].json()["detail"] == "Institution with this code already exists", "Concurrent duplicate code error message mismatch"
+
+@pytest.mark.asyncio
+async def test_list_institutions_db_error(async_client, mock_db_pool):
+    """Test handling of database errors when listing institutions."""
+    with patch('src.api.routers.institutions.get_db_pool', return_value=mock_db_pool), \
+         patch('src.api.routers.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routers.institutions.InstitutionManager.list_institutions') as mock_list:
+        mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
+        mock_list.side_effect = Exception("Database error")
+        
+        response = await async_client.get("/admin/institutions/")
+        assert response.status_code == 500
+        assert response.json()["detail"] == "Error retrieving institutions"
+
+class InstitutionManager:
+    def __init__(self, pool: asyncpg.Pool):
+        self.pool = pool
+        
+    async def list_institutions(self):
+        async with self.pool.acquire() as conn:
+            return await conn.fetch("SELECT * FROM institutions ORDER BY name")
+            
+    async def create_institution(self, institution: InstitutionCreate):
+        async with self.pool.acquire() as conn:
+            return await conn.fetchrow("""
+                INSERT INTO institutions (name, code, contact_email, contact_phone, subscription_tier, status)
+                VALUES ($1, $2, $3, $4, $5, 'ACTIVE')
+                RETURNING *
+            """, institution.name, institution.code, institution.contact_email, 
+                institution.contact_phone, institution.subscription_tier)
+
+    async def update_institution(self, institution_id: int, institution: InstitutionUpdate):
+        async with self.pool.acquire() as conn:
+            return await conn.fetchrow("""
+                UPDATE institutions 
+                SET name = $1, code = $2, contact_email = $3,
+                    contact_phone = $4, subscription_tier = $5,
+                    status = $6, updated_at = NOW()
+                WHERE id = $7
+                RETURNING *
+            """, institution.name, institution.code, institution.contact_email,
+                institution.contact_phone, institution.subscription_tier,
+                institution.status, institution_id)
