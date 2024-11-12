@@ -1,35 +1,38 @@
 -- Multi-Tenant Migration Script
 -- Safety measures
-SET session_replication_role = 'replica';  -- Temporarily disable triggers
-SET constraint_execution_limit = '0';      -- No constraint checking during migration
+-- Temporarily disable triggers and constraints
+-- Ensure these changes are only applied in a safe environment
+SET session_replication_role = 'replica';  
+SET constraint_execution_limit = '0';      
 
 -- Transaction wrapper
 BEGIN;
 
+-- Savepoint for initial setup
+SAVEPOINT initial_setup;
+
 -- 1. Create institutions table first
 CREATE TABLE IF NOT EXISTS institutions (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    code VARCHAR(50) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    contact_email VARCHAR(255),
-    contact_phone VARCHAR(50),
-    subscription_tier VARCHAR(50),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    metadata JSONB,
-    CONSTRAINT institutions_code_unique UNIQUE (code),
-    CONSTRAINT valid_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED'))
+    institution_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    contact_info JSONB,
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for institutions
 CREATE INDEX idx_institutions_code ON institutions(code);
 CREATE INDEX idx_institutions_status ON institutions(status) WHERE status = 'ACTIVE';
 
+-- Savepoint after creating institutions table
+SAVEPOINT institutions_created;
+
 -- 2. Create institution_users mapping table
 CREATE TABLE IF NOT EXISTS institution_users (
     id SERIAL PRIMARY KEY,
-    institution_id INTEGER REFERENCES institutions(id),
+    institution_id INTEGER REFERENCES institutions(institution_id),
     user_id INTEGER REFERENCES users(user_id),
     role VARCHAR(50) NOT NULL,
     is_active BOOLEAN DEFAULT true,
@@ -45,30 +48,51 @@ CREATE TABLE IF NOT EXISTS institution_users (
 CREATE INDEX idx_institution_users_lookup ON institution_users(institution_id, user_id) WHERE is_active = true;
 CREATE INDEX idx_institution_users_role ON institution_users(role);
 
+-- Savepoint after creating institution_users table
+SAVEPOINT institution_users_created;
+
 -- 3. Add institution_id to existing tables
 -- Add column with NOT NULL constraint deferred
 ALTER TABLE employers 
-ADD COLUMN institution_id INTEGER;
+ADD COLUMN institution_id INTEGER NOT NULL,
+ADD CONSTRAINT fk_employers_institution FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE users 
-ADD COLUMN institution_id INTEGER;
+ADD COLUMN institution_id INTEGER NOT NULL,
+ADD CONSTRAINT fk_users_institution FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE claims 
-ADD COLUMN institution_id INTEGER;
+ADD COLUMN institution_id INTEGER NOT NULL,
+ADD CONSTRAINT fk_claims_institution FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE documents 
-ADD COLUMN institution_id INTEGER;
+ADD COLUMN institution_id INTEGER NOT NULL,
+ADD CONSTRAINT fk_documents_institution FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE processing_history 
-ADD COLUMN institution_id INTEGER;
+ADD COLUMN institution_id INTEGER NOT NULL,
+ADD CONSTRAINT fk_processing_history_institution FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE philhealthbenefits 
-ADD COLUMN institution_id INTEGER;
+ADD COLUMN institution_id INTEGER NOT NULL,
+ADD CONSTRAINT fk_philhealthbenefits_institution FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+DEFERRABLE INITIALLY DEFERRED;
+
+-- Savepoint after adding institution_id to existing tables
+SAVEPOINT institution_id_added;
 
 -- 4. Create a default institution for existing data
 INSERT INTO institutions (name, code, status)
 VALUES ('Default Institution', 'DEFAULT', 'ACTIVE')
-RETURNING id INTO default_institution_id;
+RETURNING institution_id INTO default_institution_id;
+
+-- Savepoint after creating default institution
+SAVEPOINT default_institution_created;
 
 -- 5. Update existing records with default institution
 UPDATE employers SET institution_id = default_institution_id;
@@ -78,35 +102,22 @@ UPDATE documents SET institution_id = default_institution_id;
 UPDATE processing_history SET institution_id = default_institution_id;
 UPDATE philhealthbenefits SET institution_id = default_institution_id;
 
+-- Savepoint after updating records with default institution_id
+SAVEPOINT default_institution_created;
+
 -- Add default institution ID to existing records
 UPDATE claims SET institution_id = 1 WHERE institution_id IS NULL;
 UPDATE members SET institution_id = 1 WHERE institution_id IS NULL;
 UPDATE documents SET institution_id = 1 WHERE institution_id IS NULL;
 
+-- Savepoint after updating existing records
+SAVEPOINT existing_records_updated;
+
 -- 6. Now add foreign key constraints
-ALTER TABLE employers 
-ADD CONSTRAINT fk_employers_institution 
-FOREIGN KEY (institution_id) REFERENCES institutions(id);
+-- Removed redundant constraints
 
-ALTER TABLE users 
-ADD CONSTRAINT fk_users_institution 
-FOREIGN KEY (institution_id) REFERENCES institutions(id);
-
-ALTER TABLE claims 
-ADD CONSTRAINT fk_claims_institution 
-FOREIGN KEY (institution_id) REFERENCES institutions(id);
-
-ALTER TABLE documents 
-ADD CONSTRAINT fk_documents_institution 
-FOREIGN KEY (institution_id) REFERENCES institutions(id);
-
-ALTER TABLE processing_history 
-ADD CONSTRAINT fk_processing_history_institution 
-FOREIGN KEY (institution_id) REFERENCES institutions(id);
-
-ALTER TABLE philhealthbenefits 
-ADD CONSTRAINT fk_philhealthbenefits_institution 
-FOREIGN KEY (institution_id) REFERENCES institutions(id);
+-- Savepoint after adding foreign key constraints
+SAVEPOINT foreign_keys_added;
 
 -- 7. Create indexes for institutional queries
 CREATE INDEX idx_employers_institution ON employers(institution_id);
@@ -125,6 +136,9 @@ CREATE INDEX idx_documents_institution_id ON documents(institution_id);
 CREATE INDEX idx_claims_institution_id_claim_id ON claims(institution_id, claim_id);
 CREATE INDEX idx_documents_institution_id_document_id ON documents(institution_id, document_id);
 
+-- Savepoint after creating indexes
+SAVEPOINT indexes_created;
+
 -- 8. Add institution-specific constraints
 ALTER TABLE claims
 ADD CONSTRAINT claims_institution_member_match
@@ -135,6 +149,9 @@ CHECK (
         WHERE members.id = claims.member_id
     )
 );
+
+-- Savepoint after adding institution-specific constraints
+SAVEPOINT institution_constraints_added;
 
 -- 9. Create audit trigger for institution changes
 CREATE OR REPLACE FUNCTION audit_institution_changes()
@@ -152,7 +169,7 @@ BEGIN
         TG_TABLE_NAME,
         NEW.id,
         TG_OP,
-        CASE WHEN TG_OP = 'UPDATE' THEN row_to_json(OLD) ELSE NULL END,
+        CASE WHEN TG_OP = 'UPDATE' THEN hstore(OLD) - hstore(NEW) END,
         row_to_json(NEW),
         current_user,
         NEW.institution_id
@@ -165,10 +182,13 @@ CREATE TRIGGER institutions_audit
 AFTER INSERT OR UPDATE OR DELETE ON institutions
 FOR EACH ROW EXECUTE FUNCTION audit_institution_changes();
 
+-- Savepoint after creating audit trigger
+SAVEPOINT audit_trigger_created;
+
 -- 10. Create views for easier querying
 CREATE OR REPLACE VIEW vw_institution_stats AS
 SELECT 
-    i.id AS institution_id,
+    i.institution_id,
     i.name,
     i.code,
     i.status,
@@ -176,19 +196,19 @@ SELECT
     COUNT(DISTINCT c.claim_id) AS claim_count,
     COUNT(DISTINCT u.user_id) AS user_count
 FROM institutions i
-LEFT JOIN employers e ON e.institution_id = i.id
-LEFT JOIN claims c ON c.institution_id = i.id
-LEFT JOIN institution_users u ON u.institution_id = i.id
-GROUP BY i.id, i.name, i.code, i.status;
+LEFT JOIN employers e ON e.institution_id = i.institution_id
+LEFT JOIN claims c ON c.institution_id = i.institution_id
+LEFT JOIN institution_users u ON u.institution_id = i.institution_id
+GROUP BY i.institution_id, i.name, i.code, i.status;
 
 CREATE OR REPLACE VIEW vw_active_claims_per_institution AS
 SELECT 
-    i.id AS institution_id,
+    i.institution_id,
     i.name AS institution_name,
     COUNT(c.id) AS active_claim_count
 FROM institutions i
-LEFT JOIN claims c ON c.institution_id = i.id AND c.status = 'ACTIVE'
-GROUP BY i.id, i.name;
+LEFT JOIN claims c ON c.institution_id = i.institution_id AND c.status = 'ACTIVE'
+GROUP BY i.institution_id, i.name;
 
 CREATE OR REPLACE VIEW vw_user_activity_by_institution AS
 SELECT 
@@ -197,8 +217,11 @@ SELECT
     u.user_id,
     u.last_login
 FROM users u
-LEFT JOIN institutions i ON u.institution_id = i.id
+LEFT JOIN institutions i ON u.institution_id = i.institution_id
 WHERE u.last_login > CURRENT_DATE - INTERVAL '30 days';
+
+-- Savepoint after creating views
+SAVEPOINT views_created;
 
 -- Verify institution_id in views
 SELECT * FROM vw_institution_stats WHERE institution_id = 1;
@@ -223,13 +246,13 @@ WHERE institution_id IS NULL;
 -- Check for invalid institution references
 SELECT 'claims' AS table_name, COUNT(*) AS invalid_references
 FROM claims c
-LEFT JOIN institutions i ON c.institution_id = i.id
-WHERE i.id IS NULL
+LEFT JOIN institutions i ON c.institution_id = i.institution_id
+WHERE i.institution_id IS NULL
 UNION ALL
 SELECT 'members', COUNT(*)
 FROM members m
-LEFT JOIN institutions i ON m.institution_id = i.id
-WHERE i.id IS NULL;
+LEFT JOIN institutions i ON m.institution_id = i.institution_id
+WHERE i.institution_id IS NULL;
 
 -- Check if all claims link to valid institutions through members
 SELECT COUNT(*) AS mismatched_institutions
