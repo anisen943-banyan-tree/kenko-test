@@ -1,0 +1,5 @@
+
+q
+
+
+export PYTHONPATH=$(pwd)/document-processing/src:$PYTHONPATH
