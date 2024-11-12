@@ -11,9 +11,8 @@ import uuid
 # Removed duplicate import of Any
 # from typing import Any
 
-# Alias the imported ClaimsProcessor to avoid naming conflict
-# Replace 'some_module' with the actual module name from which ClaimsProcessor is imported
-from some_module import ClaimsProcessor as ImportedClaimsProcessor
+# Remove problematic import that's causing the conflict
+# from some_module import ClaimsProcessor as ImportedClaimsProcessor
 
 class VerificationStatus(str, Enum):
     PENDING = "Pending"
