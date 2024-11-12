@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime
+from typing import Dict, Optional
 from claims_processor.processor import ClaimsProcessor  # Adjusted import statement
 
 class ClaimsProcessor:

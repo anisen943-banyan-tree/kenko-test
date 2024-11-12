@@ -45,6 +45,11 @@ jobs:
           pip install black
           black --check .
 
+      - name: Type check with mypy
+        run: |
+          pip install mypy
+          mypy src/claims_processor tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
+
       - name: Run tests
         run: |
           pip install pytest
