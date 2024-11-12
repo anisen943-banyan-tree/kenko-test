@@ -7,7 +7,13 @@ from enum import Enum
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 import uuid
-from typing import Any
+
+# Removed duplicate import of Any
+# from typing import Any
+
+# If ClaimsProcessor is being imported from another module, alias it to avoid conflict
+# Example:
+# from some_module import ClaimsProcessor as ImportedClaimsProcessor
 
 class VerificationStatus(str, Enum):
     PENDING = "Pending"
@@ -870,3 +876,17 @@ class DocumentProcessor:
                 messages.append("No version history found")
                 
             return len(messages) == 0, messages
+
+# Assuming ClaimsProcessor is being imported and also defined locally, rename the local class to avoid conflict
+# For example, rename to LocalClaimsProcessor
+
+# Uncomment and modify the import below if you have an external ClaimsProcessor
+# from some_module import ClaimsProcessor as ImportedClaimsProcessor
+
+class LocalClaimsProcessor:
+    """Local ClaimsProcessor class handling specific processing tasks."""
+    def __init__(self):
+        # Initialization code...
+        pass
+
+    # Additional methods...
