@@ -8,15 +8,15 @@ Script: index
 +-------------------------------------------+-------------------+----------+
 | src.claims_processor                      |  25.00% imprecise |    4 LOC |
 | src.claims_processor.exceptions           |   0.00% imprecise |   11 LOC |
-| src.claims_processor.handlers             |  23.55% imprecise |  310 LOC |
-| src.claims_processor.philhealth           |  22.63% imprecise |  137 LOC |
-| src.claims_processor.policy               |  34.03% imprecise |  238 LOC |
-| src.claims_processor.processor            |  26.07% imprecise | 1024 LOC |
-| src.claims_processor.processor_production |  27.07% imprecise |  266 LOC |
-| test_claims                               |  39.58% imprecise |  144 LOC |
-| test_document_api                         |  66.04% imprecise |   53 LOC |
+| src.claims_processor.handlers             |  24.19% imprecise |  310 LOC |
+| src.claims_processor.philhealth           |  29.93% imprecise |  137 LOC |
+| src.claims_processor.policy               |  37.17% imprecise |  269 LOC |
+| src.claims_processor.processor            |  26.94% imprecise | 1084 LOC |
+| src.claims_processor.processor_production |  28.57% imprecise |  266 LOC |
+| test_claims                               |  45.14% imprecise |  144 LOC |
+| test_document_api                         |  67.92% imprecise |   53 LOC |
 | test_document_processor                   |  44.83% imprecise |   58 LOC |
-| test_institutions                         |  66.67% imprecise |  372 LOC |
+| test_institutions                         |  67.74% imprecise |  372 LOC |
 +-------------------------------------------+-------------------+----------+
-| Total                                     |  34.05% imprecise | 2617 LOC |
+| Total                                     |  35.60% imprecise | 2708 LOC |
 +-------------------------------------------+-------------------+----------+

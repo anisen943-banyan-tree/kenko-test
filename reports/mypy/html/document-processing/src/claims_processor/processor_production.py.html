@@ -280,11 +280,11 @@
 <span class="line-precise" title="No Anys on this line!">from dataclasses import dataclass, field</span>
 <span class="line-precise" title="No Anys on this line!">import asyncio</span>
 <span class="line-precise" title="No Anys on this line!">import json</span>
-<span class="line-precise" title="No Anys on this line!">import structlog</span>
+<span class="line-any" title="No Anys on this line!">import structlog</span>
 <span class="line-precise" title="No Anys on this line!">import redis.asyncio as redis</span>
 <span class="line-precise" title="No Anys on this line!">from enum import Enum</span>
 <span class="line-precise" title="No Anys on this line!">from collections import defaultdict</span>
-<span class="line-precise" title="No Anys on this line!">from tenacity import retry, stop_after_attempt, wait_fixed</span>
+<span class="line-any" title="No Anys on this line!">from tenacity import retry, stop_after_attempt, wait_fixed</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">class ValidationError(Exception):</span>
 <span class="line-empty" title="No Anys on this line!">    """Custom exception for validation errors."""</span>
@@ -354,10 +354,10 @@ Explicit (x13)">                config = json.load(f)</span>
 Explicit (x1)">                defaults.update(config)</span>
 <span class="line-precise" title="No Anys on this line!">        except FileNotFoundError:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x6)">            structlog.get_logger().error("Configuration file not found")</span>
+Unimported (x5)">            structlog.get_logger().error("Configuration file not found")</span>
 <span class="line-precise" title="No Anys on this line!">        except json.JSONDecodeError as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x6)">            structlog.get_logger().error("Error parsing config file", error=str(e))</span>
+Unimported (x5)">            structlog.get_logger().error("Error parsing config file", error=str(e))</span>
 <span class="line-precise" title="No Anys on this line!">        return defaults</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-imprecise" title="Any Types on this line: 
@@ -407,13 +407,14 @@ Explicit (x2)">    async def process_claim(self, claim: Dict[str, Any]) -&gt; Di
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x2)">            self._validate_claim(claim)</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x5)">            cached_result = await self._check_cache(claim)</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x1)">            if cached_result:</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)
+Explicit (x1)">            cached_result = await self._check_cache(claim)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">            if cached_result:</span>
 <span class="line-precise" title="No Anys on this line!">                self.metrics.cache_hits += 1</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x1)">                return cached_result</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">                return cached_result</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x5)">            translated_claim = self._translate_codes(claim)</span>
@@ -431,8 +432,9 @@ Explicit (x5)">                result = await self._manual_adjudication_flow(ben
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x5)">                result = await self._auto_adjudication_flow(benefits)</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x4)">            await self._update_cache(claim, result)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x2)
+Explicit (x2)">            await self._update_cache(claim, result)</span>
 <span class="line-precise" title="No Anys on this line!">            self.metrics.total_claims += 1</span>
 <span class="line-precise" title="No Anys on this line!">            self.metrics.processing_times.append((datetime.now() - start_time).total_seconds())</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -441,25 +443,29 @@ Explicit (x1)">            return result</span>
 <span class="line-precise" title="No Anys on this line!">        except ValidationError as e:</span>
 <span class="line-precise" title="No Anys on this line!">            self.metrics.error_counts[ClaimErrorCategory.VALIDATION] += 1</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Validation error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except TranslationError as e:</span>
 <span class="line-precise" title="No Anys on this line!">            self.metrics.error_counts[ClaimErrorCategory.TRANSLATION] += 1</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Translation error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except CacheError as e:</span>
 <span class="line-precise" title="No Anys on this line!">            self.metrics.error_counts[ClaimErrorCategory.CACHE] += 1</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Cache error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-precise" title="No Anys on this line!">            self.metrics.error_counts[ClaimErrorCategory.UNKNOWN] += 1</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Unknown error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -472,9 +478,8 @@ Explicit (x1)">    def _validate_claim(self, claim: Dict[str, Any]) -&gt; None:<
 Explicit (x1)">            if field not in claim:</span>
 <span class="line-precise" title="No Anys on this line!">                raise ValidationError(f"Missing required field: {field}")</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-precise" title="Any Types on this line: 
-Explicit (x20)
-Omitted Generics (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x2)">    async def _check_cache(self, claim: Dict[str, Any]) -&gt; Optional[Dict[str, Any]]:</span>
 <span class="line-empty" title="No Anys on this line!">        """Check if the claim result is already cached."""</span>
@@ -489,17 +494,20 @@ Explicit (x4)">            cached_result = await self.cache.get(key)</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            if cached_result:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x7)">                structlog.get_logger().info("Cache hit", claim_id=claim_id)</span>
+Unimported (x5)
+Explicit (x1)">                structlog.get_logger().info("Cache hit", claim_id=claim_id)</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">                return cached_result</span>
 <span class="line-empty" title="No Anys on this line!">            else:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x7)">                structlog.get_logger().info("Cache miss", claim_id=claim_id)</span>
+Unimported (x5)
+Explicit (x1)">                structlog.get_logger().info("Cache miss", claim_id=claim_id)</span>
 <span class="line-precise" title="No Anys on this line!">                self.metrics.cache_misses += 1</span>
 <span class="line-precise" title="No Anys on this line!">                return None</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Cache check error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-precise" title="No Anys on this line!">            raise CacheError("Error checking cache")</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -509,13 +517,15 @@ Explicit (x2)">    def _translate_codes(self, claim: Dict[str, Any]) -&gt; Dict[
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-empty" title="No Anys on this line!">            # Translation logic here</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().info("Code translation completed", claim_id=claim.get("claim_id"))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            return claim</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Code translation error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-precise" title="No Anys on this line!">            raise TranslationError("Error translating codes")</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -525,13 +535,15 @@ Explicit (x2)">    def _process_documents(self, claim: Dict[str, Any]) -&gt; Dic
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-empty" title="No Anys on this line!">            # Document processing logic here</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().info("Document processing completed", claim_id=claim.get("claim_id"))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            return claim</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Document processing error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -541,13 +553,15 @@ Explicit (x2)">    def _calculate_benefits(self, claim: Dict[str, Any]) -&gt; Di
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-empty" title="No Anys on this line!">            # Benefit calculation logic here</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().info("Benefit calculation completed", claim_id=claim.get("claim_id"))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            return claim</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Benefit calculation error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -557,12 +571,14 @@ Explicit (x1)">    def _check_review_required(self, claim: Dict[str, Any]) -&gt;
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-empty" title="No Anys on this line!">            # Review check logic here</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().info("Review check completed", claim_id=claim.get("claim_id"))</span>
 <span class="line-precise" title="No Anys on this line!">            return False</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Review check error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -572,13 +588,15 @@ Explicit (x2)">    async def _manual_adjudication_flow(self, claim: Dict[str, An
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-empty" title="No Anys on this line!">            # Manual adjudication logic here</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().info("Manual adjudication completed", claim_id=claim.get("claim_id"))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            return claim</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Manual adjudication error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -588,19 +606,20 @@ Explicit (x2)">    async def _auto_adjudication_flow(self, claim: Dict[str, Any]
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-empty" title="No Anys on this line!">            # Automatic adjudication logic here</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().info("Automatic adjudication completed", claim_id=claim.get("claim_id"))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            return claim</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
+Unimported (x5)
+Explicit (x6)
 Omitted Generics (x2)">            structlog.get_logger().error("Automatic adjudication error", error=str(e), claim_id=claim.get("claim_id"))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-precise" title="Any Types on this line: 
-Explicit (x20)
-Omitted Generics (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x2)">    async def _update_cache(self, claim: Dict[str, Any], result: Dict[str, Any]) -&gt; None:</span>
 <span class="line-empty" title="No Anys on this line!">        """Update the cache with the processed result."""</span>
@@ -613,10 +632,12 @@ Explicit (x3)">            key = claim_id if claim_id is not None else ""</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x3)">            await cache.update(key, result)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x7)">            structlog.get_logger().info("Cache updated", claim_id=claim_id)</span>
+Unimported (x5)
+Explicit (x1)">            structlog.get_logger().info("Cache updated", claim_id=claim_id)</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x7)">            structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim_id)</span>
+Unimported (x5)
+Explicit (x1)">            structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim_id)</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">    def _calculate_processing_time(self) -&gt; float:</span>

@@ -382,13 +382,13 @@
 <span id="L372" class="lineno"><a class="lineno" href="#L372">372</a></span>
 </pre></td>
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">import pytest</span>
-<span class="line-precise" title="No Anys on this line!">from httpx import AsyncClient</span>
-<span class="line-precise" title="No Anys on this line!">from fastapi import FastAPI, HTTPException</span>
+<span class="line-any" title="No Anys on this line!">from httpx import AsyncClient</span>
+<span class="line-any" title="No Anys on this line!">from fastapi import FastAPI, HTTPException</span>
 <span class="line-precise" title="No Anys on this line!">from unittest.mock import patch, AsyncMock</span>
 <span class="line-any" title="No Anys on this line!">from document_processing.routers import institutions  # Adjusted import</span>
 <span class="line-any" title="No Anys on this line!">from slowapi import Limiter, _rate_limit_exceeded_handler</span>
 <span class="line-any" title="No Anys on this line!">from slowapi.util import get_remote_address</span>
-<span class="line-precise" title="No Anys on this line!">from fastapi.middleware.cors import CORSMiddleware</span>
+<span class="line-any" title="No Anys on this line!">from fastapi.middleware.cors import CORSMiddleware</span>
 <span class="line-any" title="No Anys on this line!">from asyncpg import UniqueViolationError</span>
 <span class="line-any" title="No Anys on this line!">from factory import Factory, Faker, SubFactory</span>
 <span class="line-any" title="No Anys on this line!">from factory.alchemy import SQLAlchemyModelFactory</span>
@@ -457,7 +457,7 @@ Omitted Generics (x2)">@pytest.fixture</span>
 <span class="line-empty" title="No Anys on this line!">    """</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x2)
-Explicit (x13)">    app = FastAPI()</span>
+Unimported (x1)">    app = FastAPI()</span>
 <span class="line-empty" title="No Anys on this line!">    </span>
 <span class="line-empty" title="No Anys on this line!">    # Initialize Rate Limiter with adjustable rate limits via environment variables</span>
 <span class="line-any" title="Any Types on this line: 
@@ -475,7 +475,8 @@ Unimported (x1)">    app.add_exception_handler(429, _rate_limit_exceeded_handler
 <span class="line-empty" title="No Anys on this line!">    # Add CORS Middleware</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x3)">    app.add_middleware(</span>
-<span class="line-precise" title="No Anys on this line!">        CORSMiddleware,</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">        CORSMiddleware,</span>
 <span class="line-precise" title="No Anys on this line!">        allow_origins=origins,</span>
 <span class="line-any" title="No Anys on this line!">        allow_credentials=True,</span>
 <span class="line-any" title="No Anys on this line!">        allow_methods=["*"],</span>
@@ -489,7 +490,7 @@ Unimported (x1)">    app.include_router(institutions.router)</span>
 <span class="line-empty" title="No Anys on this line!">    </span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x3)
-Explicit (x3)">    async with AsyncClient(app=app, base_url="http://test") as ac:</span>
+Unimported (x1)">    async with AsyncClient(app=app, base_url="http://test") as ac:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">        yield ac</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -777,7 +778,7 @@ Unannotated (x5)">    assert response.json()["detail"] == "Invalid token", "Inva
 Unannotated (x2)">    with patch('src.api.routers.institutions.verify_admin_token') as mock_verify:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x3)
-Explicit (x1)">        mock_verify.side_effect = HTTPException(status_code=403, detail="Insufficient permissions")</span>
+Unimported (x1)">        mock_verify.side_effect = HTTPException(status_code=403, detail="Insufficient permissions")</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">        headers = {"Authorization": "Bearer non_admin_jwt_token"}</span>
 <span class="line-any" title="Any Types on this line: 

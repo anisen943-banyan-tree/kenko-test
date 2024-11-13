@@ -246,13 +246,44 @@
 <span id="L236" class="lineno"><a class="lineno" href="#L236">236</a></span>
 <span id="L237" class="lineno"><a class="lineno" href="#L237">237</a></span>
 <span id="L238" class="lineno"><a class="lineno" href="#L238">238</a></span>
+<span id="L239" class="lineno"><a class="lineno" href="#L239">239</a></span>
+<span id="L240" class="lineno"><a class="lineno" href="#L240">240</a></span>
+<span id="L241" class="lineno"><a class="lineno" href="#L241">241</a></span>
+<span id="L242" class="lineno"><a class="lineno" href="#L242">242</a></span>
+<span id="L243" class="lineno"><a class="lineno" href="#L243">243</a></span>
+<span id="L244" class="lineno"><a class="lineno" href="#L244">244</a></span>
+<span id="L245" class="lineno"><a class="lineno" href="#L245">245</a></span>
+<span id="L246" class="lineno"><a class="lineno" href="#L246">246</a></span>
+<span id="L247" class="lineno"><a class="lineno" href="#L247">247</a></span>
+<span id="L248" class="lineno"><a class="lineno" href="#L248">248</a></span>
+<span id="L249" class="lineno"><a class="lineno" href="#L249">249</a></span>
+<span id="L250" class="lineno"><a class="lineno" href="#L250">250</a></span>
+<span id="L251" class="lineno"><a class="lineno" href="#L251">251</a></span>
+<span id="L252" class="lineno"><a class="lineno" href="#L252">252</a></span>
+<span id="L253" class="lineno"><a class="lineno" href="#L253">253</a></span>
+<span id="L254" class="lineno"><a class="lineno" href="#L254">254</a></span>
+<span id="L255" class="lineno"><a class="lineno" href="#L255">255</a></span>
+<span id="L256" class="lineno"><a class="lineno" href="#L256">256</a></span>
+<span id="L257" class="lineno"><a class="lineno" href="#L257">257</a></span>
+<span id="L258" class="lineno"><a class="lineno" href="#L258">258</a></span>
+<span id="L259" class="lineno"><a class="lineno" href="#L259">259</a></span>
+<span id="L260" class="lineno"><a class="lineno" href="#L260">260</a></span>
+<span id="L261" class="lineno"><a class="lineno" href="#L261">261</a></span>
+<span id="L262" class="lineno"><a class="lineno" href="#L262">262</a></span>
+<span id="L263" class="lineno"><a class="lineno" href="#L263">263</a></span>
+<span id="L264" class="lineno"><a class="lineno" href="#L264">264</a></span>
+<span id="L265" class="lineno"><a class="lineno" href="#L265">265</a></span>
+<span id="L266" class="lineno"><a class="lineno" href="#L266">266</a></span>
+<span id="L267" class="lineno"><a class="lineno" href="#L267">267</a></span>
+<span id="L268" class="lineno"><a class="lineno" href="#L268">268</a></span>
+<span id="L269" class="lineno"><a class="lineno" href="#L269">269</a></span>
 </pre></td>
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from typing import Dict, List, Optional</span>
 <span class="line-precise" title="No Anys on this line!">from datetime import datetime, timedelta</span>
 <span class="line-precise" title="No Anys on this line!">from dataclasses import dataclass, field</span>
 <span class="line-precise" title="No Anys on this line!">from enum import Enum</span>
-<span class="line-precise" title="No Anys on this line!">import structlog</span>
-<span class="line-precise" title="No Anys on this line!">from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type</span>
+<span class="line-any" title="No Anys on this line!">import structlog</span>
+<span class="line-any" title="No Anys on this line!">from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type</span>
 <span class="line-any" title="No Anys on this line!">import asyncpg</span>
 <span class="line-precise" title="No Anys on this line!">import os</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -336,7 +367,7 @@ Unimported (x1)">    def __init__(self, db_pool: asyncpg.Pool):</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x2)">        self.pool = db_pool</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x5)">        self.logger = structlog.get_logger()</span>
+Unimported (x4)">        self.logger = structlog.get_logger()</span>
 <span class="line-precise" title="Any Types on this line: 
 Omitted Generics (x2)">        self.retry_attempts = int(os.getenv('RETRY_ATTEMPTS', 3))</span>
 <span class="line-precise" title="Any Types on this line: 
@@ -347,10 +378,8 @@ Omitted Generics (x2)">        self.retry_min = int(os.getenv('RETRY_MIN', 2))</
 Omitted Generics (x2)">        self.retry_max = int(os.getenv('RETRY_MAX', 10))</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x20)
-Omitted Generics (x6)
-Error (x8)
-Unimported (x2)">    @retry(stop=stop_after_attempt(self.retry_attempts), wait=wait_exponential(multiplier=self.retry_multiplier, min=self.retry_min, max=self.retry_max), retry=retry_if_exception_type(asyncpg.PostgresError))</span>
+Unimported (x10)
+Error (x8)">    @retry(stop=stop_after_attempt(self.retry_attempts), wait=wait_exponential(multiplier=self.retry_multiplier, min=self.retry_min, max=self.retry_max), retry=retry_if_exception_type(asyncpg.PostgresError))</span>
 <span class="line-any" title="No Anys on this line!">    async def initialize_schema(self):</span>
 <span class="line-empty" title="No Anys on this line!">        """Initialize the database schema for policies"""</span>
 <span class="line-empty" title="No Anys on this line!">        try:</span>
@@ -416,16 +445,15 @@ Unimported (x3)">                await connection.executemany("""</span>
 <span class="line-precise" title="No Anys on this line!">                """, benefits_data)</span>
 <span class="line-empty" title="No Anys on this line!">                </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                self.logger.info("Policy added successfully", policy_id=policy.policy_id)</span>
+Unimported (x3)">                self.logger.info("Policy added successfully", policy_id=policy.policy_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x3)">        except asyncpg.PostgresError as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">            self.logger.error("Failed to add policy", policy_id=policy.policy_id, error=str(e))</span>
+Unimported (x4)">            self.logger.error("Failed to add policy", policy_id=policy.policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Unexpected error during policy addition", policy_id=policy.policy_id, error=str(e))</span>
+Unimported (x3)">            self.logger.error("Unexpected error during policy addition", policy_id=policy.policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">    async def get_policy(self, policy_id: str) -&gt; Optional[PolicyTerms]:</span>
@@ -467,21 +495,20 @@ Unimported (x2)">                        max_coverage=row['max_coverage'],</span
 Unimported (x2)">                        deductible=row['deductible']</span>
 <span class="line-empty" title="No Anys on this line!">                    )</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                    self.logger.info("Policy retrieved successfully", policy_id=policy_id)</span>
+Unimported (x3)">                    self.logger.info("Policy retrieved successfully", policy_id=policy_id)</span>
 <span class="line-precise" title="No Anys on this line!">                    return policy</span>
 <span class="line-empty" title="No Anys on this line!">                else:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                    self.logger.warning("Policy not found", policy_id=policy_id)</span>
+Unimported (x3)">                    self.logger.warning("Policy not found", policy_id=policy_id)</span>
 <span class="line-precise" title="No Anys on this line!">                    return None</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x3)">        except asyncpg.PostgresError as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">            self.logger.error("Failed to retrieve policy", policy_id=policy_id, error=str(e))</span>
+Unimported (x4)">            self.logger.error("Failed to retrieve policy", policy_id=policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Unexpected error during policy retrieval", policy_id=policy_id, error=str(e))</span>
+Unimported (x3)">            self.logger.error("Unexpected error during policy retrieval", policy_id=policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-imprecise" title="Any Types on this line: 
@@ -540,17 +567,15 @@ Unimported (x3)">                        await connection.execute("""</span>
 <span class="line-precise" title="No Anys on this line!">                        """, benefit.benefit_id, policy.policy_id, benefit.benefit_type, benefit.coverage_limit, benefit.sub_limits, benefit.waiting_period, benefit.exclusions)</span>
 <span class="line-empty" title="No Anys on this line!">                </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">                self.logger.info("Policy updated successfully", policy_id=policy.policy_id, added=len(benefits_to_add), updated=len(benefits_to_update), deleted=len(benefits_to_delete))</span>
+Unimported (x4)">                self.logger.info("Policy updated successfully", policy_id=policy.policy_id, added=len(benefits_to_add), updated=len(benefits_to_update), deleted=len(benefits_to_delete))</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x3)">        except asyncpg.PostgresError as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">            self.logger.error("Failed to update policy", policy_id=policy.policy_id, error=str(e))</span>
+Unimported (x4)">            self.logger.error("Failed to update policy", policy_id=policy.policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Unexpected error during policy update", policy_id=policy.policy_id, error=str(e))</span>
+Unimported (x3)">            self.logger.error("Unexpected error during policy update", policy_id=policy.policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-imprecise" title="Any Types on this line: 
@@ -568,17 +593,68 @@ Unimported (x3)">                await connection.execute("""</span>
 <span class="line-empty" title="No Anys on this line!">                DELETE FROM policies WHERE policy_id = $1</span>
 <span class="line-precise" title="No Anys on this line!">                """, policy_id)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                self.logger.info("Policy deleted successfully", policy_id=policy_id)</span>
+Unimported (x3)">                self.logger.info("Policy deleted successfully", policy_id=policy_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x3)">        except asyncpg.PostgresError as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">            self.logger.error("Failed to delete policy", policy_id=policy_id, error=str(e))</span>
+Unimported (x4)">            self.logger.error("Failed to delete policy", policy_id=policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Unexpected error during policy deletion", policy_id=policy_id, error=str(e))</span>
+Unimported (x3)">            self.logger.error("Unexpected error during policy deletion", policy_id=policy_id, error=str(e))</span>
 <span class="line-empty" title="No Anys on this line!">            raise</span>
+<span class="line-empty" title="No Anys on this line!"></span>
+<span class="line-precise" title="No Anys on this line!">class PolicyManager:</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">    def __init__(self, db_pool: asyncpg.Pool):</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x2)">        self.pool = db_pool</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">        self.logger = structlog.get_logger()</span>
+<span class="line-empty" title="No Anys on this line!">        # Move retry settings to class attributes</span>
+<span class="line-precise" title="Any Types on this line: 
+Omitted Generics (x2)">        self._retry_attempts = int(os.getenv('RETRY_ATTEMPTS', 3))</span>
+<span class="line-precise" title="Any Types on this line: 
+Omitted Generics (x2)">        self._retry_multiplier = int(os.getenv('RETRY_MULTIPLIER', 1))</span>
+<span class="line-precise" title="Any Types on this line: 
+Omitted Generics (x2)">        self._retry_min = int(os.getenv('RETRY_MIN', 2))</span>
+<span class="line-precise" title="Any Types on this line: 
+Omitted Generics (x2)">        self._retry_max = int(os.getenv('RETRY_MAX', 10))</span>
+<span class="line-empty" title="No Anys on this line!"></span>
+<span class="line-any" title="No Anys on this line!">    def get_retry_decorator(self):</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)
+Unimported (x1)">        return retry(</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x2)
+Unimported (x1)">            stop=stop_after_attempt(self._retry_attempts),</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)
+Unimported (x1)">            wait=wait_exponential(</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)">                multiplier=self._retry_multiplier,</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)">                min=self._retry_min,</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)">                max=self._retry_max</span>
+<span class="line-empty" title="No Anys on this line!">            ),</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x2)
+Unimported (x2)">            retry=retry_if_exception_type(asyncpg.PostgresError)</span>
+<span class="line-empty" title="No Anys on this line!">        )</span>
+<span class="line-empty" title="No Anys on this line!"></span>
+<span class="line-empty" title="No Anys on this line!">    @property</span>
+<span class="line-any" title="No Anys on this line!">    def initialize_schema(self):</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x2)">        @self.get_retry_decorator()</span>
+<span class="line-any" title="No Anys on this line!">        async def _initialize(self):</span>
+<span class="line-empty" title="No Anys on this line!">            """Initialize the database schema for policies"""</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x5)">            async with self.pool.acquire() as connection:</span>
+<span class="line-empty" title="No Anys on this line!">                # Implementation</span>
+<span class="line-any" title="No Anys on this line!">                pass</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)">        return _initialize</span>
 </pre></td>
 </tr></tbody>
 </table>

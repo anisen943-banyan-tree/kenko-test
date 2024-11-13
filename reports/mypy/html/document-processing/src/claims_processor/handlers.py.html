@@ -321,15 +321,15 @@
 </pre></td>
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from typing import Dict, List, Optional, Any</span>
 <span class="line-any" title="No Anys on this line!">import asyncpg</span>
-<span class="line-precise" title="No Anys on this line!">import structlog</span>
+<span class="line-any" title="No Anys on this line!">import structlog</span>
 <span class="line-precise" title="No Anys on this line!">from datetime import datetime, timezone</span>
 <span class="line-precise" title="No Anys on this line!">from pydantic import BaseModel, Field, ValidationError, validator</span>
-<span class="line-precise" title="No Anys on this line!">from fastapi import HTTPException</span>
+<span class="line-any" title="No Anys on this line!">from fastapi import HTTPException</span>
 <span class="line-precise" title="No Anys on this line!">from enum import Enum</span>
 <span class="line-precise" title="No Anys on this line!">from functools import wraps</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x5)">logger = structlog.get_logger()</span>
+Unimported (x4)">logger = structlog.get_logger()</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">class ClaimStatus(str, Enum):</span>
 <span class="line-precise" title="No Anys on this line!">    PENDING = "PENDING"</span>
@@ -392,17 +392,17 @@ Unannotated (x3)
 Unimported (x1)">        except asyncpg.exceptions.PostgresError as e:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x4)
-Explicit (x1)">            logger.error("Database operation failed", error=str(e))</span>
+Unimported (x1)">            logger.error("Database operation failed", error=str(e))</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">            raise DatabaseConnectionError("Database operation failed")</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x4)
-Explicit (x1)">            logger.error("Unexpected error in database operation", error=str(e))</span>
+Unimported (x1)">            logger.error("Unexpected error in database operation", error=str(e))</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)
-Explicit (x1)">            raise HTTPException(status_code=500, detail="Unexpected database error")</span>
+Unimported (x1)">            raise HTTPException(status_code=500, detail="Unexpected database error")</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">    return wrapper</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -414,14 +414,14 @@ Unimported (x1)">    def __init__(self, pool: asyncpg.Pool):</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x2)">        self.pool = pool</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x7)">        self.logger = structlog.get_logger().bind()</span>
+Unimported (x6)">        self.logger = structlog.get_logger().bind()</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="Any Types on this line: 
 Unannotated (x2)">    @db_error_handler</span>
 <span class="line-precise" title="No Anys on this line!">    async def validate_claim_request(self, claim_data: ClaimData) -&gt; None:</span>
 <span class="line-empty" title="No Anys on this line!">        """Validate claim request data"""</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">        self.logger = self.logger.bind(member_id=claim_data.member_id, hospital_id=claim_data.hospital_id)</span>
+Unimported (x4)">        self.logger = self.logger.bind(member_id=claim_data.member_id, hospital_id=claim_data.hospital_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x4)">        async with self.pool.acquire() as conn:</span>
 <span class="line-empty" title="No Anys on this line!">            # Verify member</span>
@@ -449,7 +449,7 @@ Unimported (x1)">            if not hospital_exists:</span>
 <span class="line-precise" title="No Anys on this line!">                raise ClaimsProcessingError(f"Hospital ID {claim_data.hospital_id} does not exist")</span>
 <span class="line-empty" title="No Anys on this line!">            </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.info("Claim request validated")</span>
+Unimported (x3)">            self.logger.info("Claim request validated")</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="Any Types on this line: 
 Unannotated (x2)">    @db_error_handler</span>
@@ -460,7 +460,7 @@ Unannotated (x2)">    @db_error_handler</span>
 <span class="line-empty" title="No Anys on this line!">    ) -&gt; str:</span>
 <span class="line-empty" title="No Anys on this line!">        """Create new claim with validation"""</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">        self.logger = self.logger.bind(user_id=user_id)</span>
+Unimported (x4)">        self.logger = self.logger.bind(user_id=user_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x2)">        await self.validate_claim_request(claim_data)</span>
 <span class="line-empty" title="No Anys on this line!">        </span>
@@ -529,8 +529,7 @@ Unimported (x1)">                    claim_id,</span>
 <span class="line-empty" title="No Anys on this line!">                )</span>
 <span class="line-empty" title="No Anys on this line!">                </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">                self.logger.info("Claim created", claim_id=claim_id)</span>
+Unimported (x4)">                self.logger.info("Claim created", claim_id=claim_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x1)">                return claim_id</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -545,7 +544,7 @@ Explicit (x1)">    async def get_claim_details(</span>
 <span class="line-empty" title="No Anys on this line!">    ) -&gt; Optional[Dict[str, Any]]:</span>
 <span class="line-empty" title="No Anys on this line!">        """Get comprehensive claim details"""</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">        self.logger = self.logger.bind(claim_id=claim_id)</span>
+Unimported (x4)">        self.logger = self.logger.bind(claim_id=claim_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x4)">        async with self.pool.acquire() as conn:</span>
 <span class="line-empty" title="No Anys on this line!">            # Get base claim data</span>
@@ -580,7 +579,7 @@ Explicit (x2)
 Unimported (x2)">                result['processing_history'] = await self._get_claim_processing_history(conn, claim_id)</span>
 <span class="line-empty" title="No Anys on this line!">            </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.info("Claim details retrieved")</span>
+Unimported (x3)">            self.logger.info("Claim details retrieved")</span>
 <span class="line-precise" title="No Anys on this line!">            return result</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
@@ -628,7 +627,7 @@ Unannotated (x2)">    @db_error_handler</span>
 <span class="line-empty" title="No Anys on this line!">    ) -&gt; bool:</span>
 <span class="line-empty" title="No Anys on this line!">        """Update claim status with validation"""</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">        self.logger = self.logger.bind(claim_id=claim_id, user_id=user_id)</span>
+Unimported (x4)">        self.logger = self.logger.bind(claim_id=claim_id, user_id=user_id)</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x4)">        async with self.pool.acquire() as conn:</span>
 <span class="line-empty" title="No Anys on this line!">            # Verify claim exists and check current status</span>
@@ -650,7 +649,7 @@ Unimported (x1)">                ClaimStatus(current_status),</span>
 <span class="line-precise" title="No Anys on this line!">                new_status</span>
 <span class="line-empty" title="No Anys on this line!">            ):</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x1)">                raise HTTPException(</span>
+Unimported (x2)">                raise HTTPException(</span>
 <span class="line-precise" title="No Anys on this line!">                    status_code=400,</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x1)">                    detail=f"Invalid status transition from {current_status} to {new_status}"</span>
@@ -692,7 +691,7 @@ Unimported (x3)">                await conn.execute("""</span>
 <span class="line-empty" title="No Anys on this line!">                )</span>
 <span class="line-empty" title="No Anys on this line!">                </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                self.logger.info("Claim status updated", new_status=new_status)</span>
+Unimported (x3)">                self.logger.info("Claim status updated", new_status=new_status)</span>
 <span class="line-precise" title="No Anys on this line!">                return True</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">    def _is_valid_status_transition(</span>

@@ -156,7 +156,7 @@
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">import pytest</span>
 <span class="line-precise" title="No Anys on this line!">import asyncio</span>
 <span class="line-precise" title="No Anys on this line!">import os</span>
-<span class="line-precise" title="No Anys on this line!">from httpx import AsyncClient</span>
+<span class="line-any" title="No Anys on this line!">from httpx import AsyncClient</span>
 <span class="line-precise" title="No Anys on this line!">from typing import Dict, Any</span>
 <span class="line-precise" title="No Anys on this line!">from datetime import datetime, timedelta, timezone</span>
 <span class="line-any" title="No Anys on this line!">import jwt</span>
@@ -243,7 +243,7 @@ Omitted Generics (x2)">@pytest.fixture</span>
 <span class="line-empty" title="No Anys on this line!">    """Create an AsyncClient for testing"""</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x2)
-Explicit (x3)
+Unimported (x1)
 Error (x1)">    async with AsyncClient(app=gateway_app, base_url="http://test") as client:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">        yield client</span>
@@ -254,7 +254,8 @@ Unannotated (x1)">        yield client</span>
 <span class="line-precise" title="No Anys on this line!">    (-100, 400),</span>
 <span class="line-precise" title="No Anys on this line!">    (None, 400)</span>
 <span class="line-empty" title="No Anys on this line!">])</span>
-<span class="line-imprecise" title="Any Types on this line: 
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x1)">async def test_claim_amount_validation(client: AsyncClient, amount: float, expected_status: int):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test validation of claim amount. Ensures that invalid amounts result in the appropriate HTTP status."""</span>
 <span class="line-precise" title="No Anys on this line!">    logger.info("Testing claim amount validation with amount: %s", amount)</span>
@@ -267,69 +268,80 @@ Unannotated (x1)">async def test_claim_amount_validation(client: AsyncClient, am
 <span class="line-precise" title="No Anys on this line!">        "total_amount": amount,</span>
 <span class="line-precise" title="No Anys on this line!">        "documents": [{"id": "doc1", "type": "report"}]</span>
 <span class="line-empty" title="No Anys on this line!">    }</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x1)">    response = await client.post("/create_claim", json=claim_data)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == expected_status, f"Unexpected status code for amount {amount}"</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">    response = await client.post("/create_claim", json=claim_data)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)">    assert response.status_code == expected_status, f"Unexpected status code for amount {amount}"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x2)
 Explicit (x1)">async def test_claim_creation(client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test creation of a new claim."""</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">    logger.info("Testing claim creation with data: %s", sample_claim_data)</span>
 <span class="line-precise" title="No Anys on this line!">    headers = {"Authorization": f"Bearer {test_token}"}</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x2)">    response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == 201, "Expected claim creation to return status 201"</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">    response_data = response.json()</span>
+Unimported (x4)
+Explicit (x1)">    response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x1)">    assert "claim_id" in response_data, "Response should contain 'claim_id'"</span>
+Unimported (x3)">    assert response.status_code == 201, "Expected claim creation to return status 201"</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">    assert response_data.get("claim_id"), "Claim ID should be returned in response"</span>
+Unimported (x4)">    response_data = response.json()</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">    assert "claim_id" in response_data, "Response should contain 'claim_id'"</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)">    assert response_data.get("claim_id"), "Claim ID should be returned in response"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x2)
 Explicit (x1)">async def test_claim_retrieval(client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test retrieval of a claim."""</span>
 <span class="line-precise" title="No Anys on this line!">    logger.info("Testing claim retrieval")</span>
 <span class="line-precise" title="No Anys on this line!">    headers = {"Authorization": f"Bearer {test_token}"}</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x2)">    create_response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x6)">    claim_id = create_response.json().get("claim_id")</span>
+Unimported (x4)
+Explicit (x1)">    create_response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">    claim_id = create_response.json().get("claim_id")</span>
 <span class="line-empty" title="No Anys on this line!">    </span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x1)">    response = await client.get(f"/claims/{claim_id}", headers=headers)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == 200, "Expected claim retrieval to return status 200"</span>
+Unimported (x5)">    response = await client.get(f"/claims/{claim_id}", headers=headers)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">    response_data = response.json()</span>
+Unimported (x3)">    assert response.status_code == 200, "Expected claim retrieval to return status 200"</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x5)">    assert response_data.get("claim_id") == claim_id, "Claim ID mismatch in retrieval"</span>
+Unimported (x4)">    response_data = response.json()</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x5)">    assert response_data.get("claim_id") == claim_id, "Claim ID mismatch in retrieval"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x2)
 Explicit (x1)">async def test_claim_update_status(client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test updating the status of a claim."""</span>
 <span class="line-precise" title="No Anys on this line!">    logger.info("Testing claim status update")</span>
 <span class="line-precise" title="No Anys on this line!">    headers = {"Authorization": f"Bearer {test_token}"}</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x2)">    create_response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x6)">    claim_id = create_response.json().get("claim_id")</span>
+Unimported (x4)
+Explicit (x1)">    create_response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">    claim_id = create_response.json().get("claim_id")</span>
 <span class="line-empty" title="No Anys on this line!">    </span>
 <span class="line-precise" title="No Anys on this line!">    update_data = {"status": "PROCESSING"}</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x2)">    response = await client.put(f"/claims/{claim_id}/status", json=update_data, headers=headers)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == 200, "Expected claim status update to return status 200"</span>
+Unimported (x5)">    response = await client.put(f"/claims/{claim_id}/status", json=update_data, headers=headers)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">    response_data = response.json()</span>
+Unimported (x3)">    assert response.status_code == 200, "Expected claim status update to return status 200"</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x4)">    assert response_data.get("status") == "PROCESSING", "Claim status mismatch after update"</span>
+Unimported (x4)">    response_data = response.json()</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">    assert response_data.get("status") == "PROCESSING", "Claim status mismatch after update"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-empty" title="No Anys on this line!"># Additional tests for enhanced coverage</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x2)
 Explicit (x1)">async def test_invalid_claim_type(client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test creation of a claim with an invalid claim type."""</span>
@@ -337,11 +349,14 @@ Explicit (x1)">async def test_invalid_claim_type(client: AsyncClient, db_pool, s
 <span class="line-precise" title="No Anys on this line!">    headers = {"Authorization": f"Bearer {test_token}"}</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">    sample_claim_data["claim_type"] = "invalid_type"</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x2)">    response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == 400, f"Expected status 400 for invalid claim type, but got {response.status_code}"</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)
+Explicit (x1)">    response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x5)">    assert response.status_code == 400, f"Expected status 400 for invalid claim type, but got {response.status_code}"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x2)
 Explicit (x1)">async def test_future_admission_date(client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test creation of a claim with a future admission date."""</span>
@@ -349,18 +364,23 @@ Explicit (x1)">async def test_future_admission_date(client: AsyncClient, db_pool
 <span class="line-precise" title="No Anys on this line!">    headers = {"Authorization": f"Bearer {test_token}"}</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">    sample_claim_data["admission_date"] = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x2)">    response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == 400, f"Expected status 400 for future admission date, but got {response.status_code}"</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)
+Explicit (x1)">    response = await client.post("/create_claim", json=sample_claim_data, headers=headers)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x5)">    assert response.status_code == 400, f"Expected status 400 for future admission date, but got {response.status_code}"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-imprecise" title="Any Types on this line: 
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Explicit (x1)
 Unannotated (x1)">async def test_unauthorized_claim_creation(client: AsyncClient, sample_claim_data: Dict[str, Any]):</span>
 <span class="line-empty" title="No Anys on this line!">    """Test unauthorized claim creation."""</span>
 <span class="line-precise" title="No Anys on this line!">    logger.info("Testing unauthorized claim creation")</span>
-<span class="line-imprecise" title="Any Types on this line: 
-Explicit (x2)">    response = await client.post("/create_claim", json=sample_claim_data)</span>
-<span class="line-precise" title="No Anys on this line!">    assert response.status_code == 401, f"Expected status 401 for unauthorized claim creation, but got {response.status_code}"</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)
+Explicit (x1)">    response = await client.post("/create_claim", json=sample_claim_data)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x5)">    assert response.status_code == 401, f"Expected status 401 for unauthorized claim creation, but got {response.status_code}"</span>
 </pre></td>
 </tr></tbody>
 </table>

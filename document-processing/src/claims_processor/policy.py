@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from enum import Enum
@@ -236,3 +236,39 @@ class PolicyProcessor:
         except Exception as e:
             self.logger.error("Unexpected error during policy deletion", policy_id=policy_id, error=str(e))
             raise
+
+class PolicyManager:
+    def __init__(self, db_pool: asyncpg.Pool):
+        self.pool = db_pool
+        self.logger = structlog.get_logger()
+        # Define retry settings as instance attributes
+        self._retry_attempts = int(os.getenv('RETRY_ATTEMPTS', 3))
+        self._retry_multiplier = int(os.getenv('RETRY_MULTIPLIER', 1))
+        self._retry_min = int(os.getenv('RETRY_MIN', 2))
+        self._retry_max = int(os.getenv('RETRY_MAX', 10))
+
+    def get_retry_decorator(self):
+        # Create retry decorator using instance attributes
+        return retry(
+            stop=stop_after_attempt(self._retry_attempts),
+            wait=wait_exponential(
+                multiplier=self._retry_multiplier,
+                min=self._retry_min,
+                max=self._retry_max
+            ),
+            retry=retry_if_exception_type(asyncpg.PostgresError)
+        )
+
+    @property
+    def initialize_schema(self):
+        @self.get_retry_decorator()
+        async def _initialize_schema():
+            """Initialize the database schema for policies"""
+            try:
+                async with self.pool.acquire() as connection:
+                    # Schema initialization code
+                    pass
+            except asyncpg.PostgresError as e:
+                self.logger.error("Failed to initialize schema", error=str(e))
+                raise
+        return _initialize_schema

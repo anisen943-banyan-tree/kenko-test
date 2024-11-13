@@ -150,8 +150,8 @@
 <span class="line-precise" title="No Anys on this line!">from datetime import datetime</span>
 <span class="line-precise" title="No Anys on this line!">from dataclasses import dataclass</span>
 <span class="line-precise" title="No Anys on this line!">from enum import Enum</span>
-<span class="line-precise" title="No Anys on this line!">import structlog</span>
-<span class="line-precise" title="No Anys on this line!">from tenacity import retry, stop_after_attempt, wait_exponential</span>
+<span class="line-any" title="No Anys on this line!">import structlog</span>
+<span class="line-any" title="No Anys on this line!">from tenacity import retry, stop_after_attempt, wait_exponential</span>
 <span class="line-precise" title="No Anys on this line!">from pydantic import BaseModel, ValidationError, Field</span>
 <span class="line-any" title="No Anys on this line!">import asyncpg  # Assuming asyncpg is used for async database operations</span>
 <span class="line-empty" title="No Anys on this line!"></span>
@@ -207,13 +207,12 @@ Unannotated (x2)">        self.db = db_pool</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Omitted Generics (x4)">        self.config = config</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x5)">        self.logger = structlog.get_logger()</span>
+Unimported (x4)">        self.logger = structlog.get_logger()</span>
 <span class="line-precise" title="No Anys on this line!">        self.HOSPITAL_SHARE_PERCENT = 0.80</span>
 <span class="line-precise" title="No Anys on this line!">        self.PF_SHARE_PERCENT = 0.20</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-precise" title="Any Types on this line: 
-Explicit (x20)
-Omitted Generics (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))</span>
 <span class="line-precise" title="No Anys on this line!">    async def calculate_benefit(self, case_rate: float) -&gt; PhilHealthBenefit:</span>
 <span class="line-empty" title="No Anys on this line!">        """Calculate PhilHealth benefit based on case rate."""</span>
 <span class="line-precise" title="No Anys on this line!">        start_time = datetime.now()</span>
@@ -228,16 +227,15 @@ Omitted Generics (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_exponent
 <span class="line-precise" title="No Anys on this line!">                calculation_timestamp=datetime.now()</span>
 <span class="line-empty" title="No Anys on this line!">            )</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.info("Benefit calculated successfully", case_rate=case_rate, benefit=benefit, start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            self.logger.info("Benefit calculated successfully", case_rate=case_rate, benefit=benefit, start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">            return benefit</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Benefit calculation failed", case_rate=case_rate, error=str(e), start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            self.logger.error("Benefit calculation failed", case_rate=case_rate, error=str(e), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">            raise BenefitCalculationError(f"Failed to calculate benefit for case rate {case_rate}") from e</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-precise" title="Any Types on this line: 
-Explicit (x20)
-Omitted Generics (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))</span>
 <span class="line-precise" title="No Anys on this line!">    async def get_membership_info(self, membership_number: str) -&gt; MembershipInfo:</span>
 <span class="line-empty" title="No Anys on this line!">        """Retrieve PhilHealth membership information."""</span>
 <span class="line-precise" title="No Anys on this line!">        start_time = datetime.now()</span>
@@ -262,20 +260,19 @@ Unannotated (x2)">                        coverage_valid=row['coverage_valid'],<
 <span class="line-precise" title="No Anys on this line!">                        validation_timestamp=datetime.now()</span>
 <span class="line-empty" title="No Anys on this line!">                    )</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                    self.logger.info("Membership info retrieved", membership_number=membership_number, membership_info=membership_info, start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">                    self.logger.info("Membership info retrieved", membership_number=membership_number, membership_info=membership_info, start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">                    return membership_info</span>
 <span class="line-empty" title="No Anys on this line!">                else:</span>
 <span class="line-precise" title="No Anys on this line!">                    raise MembershipRetrievalError(f"No membership info found for membership number {membership_number}")</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x3)">        except asyncpg.PostgresError as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
-Unimported (x1)">            self.logger.error("Database error retrieving membership info", membership_number=membership_number, error=str(e), start_time=start_time, end_time=datetime.now())</span>
+Unimported (x4)">            self.logger.error("Database error retrieving membership info", membership_number=membership_number, error=str(e), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x1)">            raise MembershipRetrievalError(f"Database error retrieving info for membership number {membership_number}") from e</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Failed to retrieve membership info", membership_number=membership_number, error=str(e), start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            self.logger.error("Failed to retrieve membership info", membership_number=membership_number, error=str(e), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">            raise MembershipRetrievalError(f"Failed to retrieve info for membership number {membership_number}") from e</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-imprecise" title="Any Types on this line: 
@@ -285,42 +282,49 @@ Omitted Generics (x4)">    async def process_claim(self, claim: Dict) -&gt; Dict
 <span class="line-empty" title="No Anys on this line!">        try:</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Omitted Generics (x2)">            validated_claim = Claim(**claim)</span>
-<span class="line-precise" title="No Anys on this line!">            membership_info = await self.get_membership_info(validated_claim.membership_number)</span>
-<span class="line-empty" title="No Anys on this line!">            </span>
-<span class="line-precise" title="No Anys on this line!">            if membership_info.status != MembershipStatus.ACTIVE:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">                self.logger.warning("Inactive membership detected", membership_info=membership_info, start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            membership_info = await self.get_membership_info(validated_claim.membership_number)</span>
+<span class="line-empty" title="No Anys on this line!">            </span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)">            if membership_info.status != MembershipStatus.ACTIVE:</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">                self.logger.warning("Inactive membership detected", membership_info=membership_info, start_time=start_time, end_time=datetime.now())</span>
 <span class="line-empty" title="No Anys on this line!">                return {</span>
 <span class="line-precise" title="No Anys on this line!">                    "status": "error",</span>
 <span class="line-precise" title="No Anys on this line!">                    "message": "Inactive PhilHealth membership",</span>
-<span class="line-precise" title="No Anys on this line!">                    "membership_info": membership_info</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">                    "membership_info": membership_info</span>
 <span class="line-empty" title="No Anys on this line!">                }</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-precise" title="No Anys on this line!">            benefit = await self.calculate_benefit(validated_claim.case_rate)</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.info("Claim processed successfully", membership_number=validated_claim.membership_number, case_rate=validated_claim.case_rate, start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            benefit = await self.calculate_benefit(validated_claim.case_rate)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)">            self.logger.info("Claim processed successfully", membership_number=validated_claim.membership_number, case_rate=validated_claim.case_rate, start_time=start_time, end_time=datetime.now())</span>
 <span class="line-empty" title="No Anys on this line!">            return {</span>
 <span class="line-precise" title="No Anys on this line!">                "status": "success",</span>
-<span class="line-precise" title="No Anys on this line!">                "benefit": benefit,</span>
-<span class="line-precise" title="No Anys on this line!">                "membership_info": membership_info</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">                "benefit": benefit,</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">                "membership_info": membership_info</span>
 <span class="line-empty" title="No Anys on this line!">            }</span>
 <span class="line-precise" title="No Anys on this line!">        except ValidationError as ve:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x7)">            self.logger.error("Claim validation error", error=ve.errors(), start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)
+Explicit (x4)">            self.logger.error("Claim validation error", error=ve.errors(), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x4)">            return {"status": "error", "message": "Invalid claim data", "error": ve.errors()}</span>
 <span class="line-precise" title="No Anys on this line!">        except MembershipRetrievalError as mre:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)
+Unimported (x3)
 Omitted Generics (x12)">            self.logger.error("Membership retrieval error", error=str(mre), membership_number=claim.get("membership_number"), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">            return {"status": "error", "message": "Failed to retrieve membership info", "error": str(mre)}</span>
 <span class="line-precise" title="No Anys on this line!">        except BenefitCalculationError as bce:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Benefit calculation error", error=str(bce), start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            self.logger.error("Benefit calculation error", error=str(bce), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">            return {"status": "error", "message": "Failed to calculate benefit", "error": str(bce)}</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x3)">            self.logger.error("Unexpected error processing claim", error=str(e), start_time=start_time, end_time=datetime.now())</span>
+Unimported (x3)">            self.logger.error("Unexpected error processing claim", error=str(e), start_time=start_time, end_time=datetime.now())</span>
 <span class="line-precise" title="No Anys on this line!">            return {"status": "error", "message": "Unexpected error processing claim", "error": str(e)}</span>
 </pre></td>
 </tr></tbody>
