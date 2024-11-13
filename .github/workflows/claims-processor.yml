@@ -4,7 +4,7 @@ env:
   PYTHON_VERSION: '3.11'
   POSTGRES_DB: claims_test_db
   POSTGRES_USER: claimsuser
-  POSTGRES_PASSWORD: Claims2024#Secure!
+  POSTGRES_PASSWORD: ${{ secrets.RDS_PASSWORD }}  # Use the existing RDS_PASSWORD secret
   AWS_REGION: ap-south-1
 
 on:
@@ -88,14 +88,14 @@ jobs:
           mkdir -p reports/mypy
       - name: Check formatting
         run: |
-          black --check src/ tests/ --diff --color > reports/black.txt || echo "Black formatting issues found"
-          isort --check-only src/ tests/ --diff --color > reports/isort.txt || echo "Import sorting issues found"
+          black --check document-processing/src/ document-processing/tests/ --diff --color > reports/black.txt || echo "Black formatting issues found"
+          isort --check-only document-processing/src/ document-processing/tests/ --diff --color > reports/isort.txt || echo "Import sorting issues found"
       - name: Run type checking
         run: |
-          mypy src/claims_processor tests/ --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
+          mypy document-processing/src/claims_processor document-processing/tests --ignore-missing-imports --html-report reports/mypy --txt-report reports/mypy.txt
       - name: Run pylint
         run: |
-          pylint src/ tests/ --output-format=colorized > reports/pylint.txt || true
+          pylint document-processing/src/ document-processing/tests/ --output-format=colorized > reports/pylint.txt || true
       - name: Upload code quality reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -150,10 +150,10 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@127.0.0.1:5433/${{ secrets.RDS_DB_NAME }}
-          PYTHONPATH: ${{ github.workspace }}/src
+          PYTHONPATH: ${{ github.workspace }}/document-processing/src
         run: |
           mkdir -p reports/tests
-          pytest tests/ -v --cov=src --cov-report=xml --junitxml=reports/tests/junit.xml
+          pytest document-processing/tests/ -v --cov=document-processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
 
       - name: Upload test results
         if: always()
