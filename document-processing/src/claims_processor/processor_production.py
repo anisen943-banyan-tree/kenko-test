@@ -228,11 +228,11 @@ class IntegratedClaimsProcessor:
         try:
             claim_id = claim.get("claim_id")
             key = claim_id if claim_id is not None else ""
-            await self.cache.update(key, result)
+            await cache.update(key, result)
             structlog.get_logger().info("Cache updated", claim_id=claim_id)
         except Exception as e:
-            structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim.get("claim_id"))
-            raise CacheError("Error updating cache")
+            structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim_id)
+            raise
 
     def _calculate_processing_time(self) -> float:
         """Calculate the total time taken to process the claim."""

@@ -1,3 +1,5 @@
+# processor.py
+
 import asyncio
 import asyncpg
 from datetime import datetime, timedelta
@@ -7,12 +9,7 @@ from enum import Enum
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 import uuid
-
-# Removed duplicate import of Any
-# from typing import Any
-
-# Remove problematic import that's causing the conflict
-# from some_module import ClaimsProcessor as ImportedClaimsProcessor
+import os
 
 class VerificationStatus(str, Enum):
     PENDING = "Pending"
@@ -240,7 +237,6 @@ class DocumentProcessor:
     ) -> str:
         """Store document with enhanced error handling and partition management."""
         # Ensure partition exists for document's timestamp
-        document_year = document.upload_timestamp.year
         await self._ensure_partition_exists(document.upload_timestamp)
         
         async with self.pool.acquire() as conn:
@@ -281,7 +277,7 @@ class DocumentProcessor:
                     )
                     
                     self.logger.info(
-                        f"document_stored: {document_id}",
+                        "document_stored",
                         document_id=document_id,
                         claim_id=document.claim_id,
                         duration=(datetime.now() - start_time).total_seconds()
@@ -304,14 +300,16 @@ class DocumentProcessor:
     ) -> List[str]:
         """Optimized batch document storage."""
         async with self.pool.acquire() as conn:
-            return await conn.copy_records_to_table(
+            records = [
+                (doc.claim_id, doc.document_type.value, doc.upload_timestamp, doc.storage_path, doc.verification_status.value, result, doc.verified_by, doc.verification_notes, doc.metadata, doc.processing_stats)
+                for doc, result in zip(documents, textract_results)
+            ]
+            await conn.copy_records_to_table(
                 'documents',
-                records=[
-                    (doc.claim_id, doc.document_type.value, doc.upload_timestamp, doc.storage_path, doc.verification_status.value, result, doc.verified_by, doc.verification_notes, doc.metadata, doc.processing_stats)
-                    for doc, result in zip(documents, textract_results)
-                ],
+                records=records,
                 columns=['claim_id', 'document_type', 'upload_timestamp', 'storage_path', 'verification_status', 'textract_results', 'verified_by', 'verification_notes', 'metadata', 'processing_stats']
             )
+            return [str(doc.document_id) for doc in documents]
 
     async def get_documents_batch(
         self,
@@ -320,7 +318,7 @@ class DocumentProcessor:
         batch_size: Optional[int] = None
     ) -> Tuple[List[DocumentMetadata], Dict[str, Union[int, float]]]:
         """Get documents batch with enhanced filtering and metrics."""
-        params: List[str] = []
+        params: List[Any] = []
         conditions: List[str] = []
         
         if status:
@@ -384,10 +382,10 @@ class DocumentProcessor:
     async def get_documents_with_stats(
         self,
         claim_id: str
-    ) -> Tuple[List[DocumentMetadata], Dict]:
+    ) -> Dict[str, Any]:
         """Get documents with materialized statistics."""
         async with self.pool.acquire() as conn:
-            return await conn.fetch("""
+            result = await conn.fetch("""
                 WITH claim_stats AS MATERIALIZED (
                     SELECT 
                         count(*) as total_docs,
@@ -400,6 +398,21 @@ class DocumentProcessor:
                 CROSS JOIN claim_stats cs
                 WHERE d.claim_id = $1
             """, claim_id)
+            
+            if not result:
+                return {}
+            
+            document = result[0]
+            processing_duration = document['updated_at'] - document['created_at']
+            
+            return {
+                "document": dict(document),
+                "processing_history": {
+                    "total_versions": document["total_docs"],
+                    "last_updated": document["avg_processing_time"],
+                    "processing_duration": processing_duration.total_seconds()
+                }
+            }
 
     async def cleanup_old_documents(self):
         """Archive old documents with enhanced tracking."""
@@ -472,6 +485,9 @@ class DocumentProcessor:
 
     async def _start_maintenance_task(self):
         """Start and monitor the maintenance task."""
+        self._maintenance_task = asyncio.create_task(self._maintenance_loop())
+
+    async def _maintenance_loop(self):
         while True:
             try:
                 await self._perform_maintenance()
@@ -503,7 +519,7 @@ class DocumentProcessor:
         """Rebuild indexes to optimize query performance."""
         async with self.pool.acquire() as conn:
             index_size = await conn.fetchval("""
-                SELECT pg_size_pretty(pg_total_relation_size('documents'));
+                SELECT pg_total_relation_size('documents');
             """)
             if index_size > self.config.index_rebuild_threshold:
                 await conn.execute("""
@@ -513,13 +529,13 @@ class DocumentProcessor:
 
     async def get_pool_health(self) -> PoolHealthMetrics:
         """Monitor connection pool health."""
-        stats = await self.pool.get_pool_status()
+        stats = self.pool.get_used()
         return PoolHealthMetrics(
-            active_connections=stats.active_size,
-            idle_connections=stats.idle_size,
-            total_connections=stats.total_size,
-            waited_count=stats.waited,
-            waited_duration=stats.waited_duration
+            active_connections=stats,
+            idle_connections=self.pool._idle_connections,
+            total_connections=self.pool._max_size,
+            waited_count=self.pool._waiting,
+            waited_duration=0.0  # asyncpg doesn't provide duration
         )
 
     async def _acquire_lock_with_timeout(
@@ -616,7 +632,7 @@ class DocumentProcessor:
         self,
         document_id: str,
         include_versions: bool = True
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Get complete document history including versions and processing stats.
         
         Args:
@@ -624,14 +640,14 @@ class DocumentProcessor:
             include_versions: Whether to include version history
             
         Returns:
-            Dict containing document history and stats
+            Dict containing document history and stats or None if not found
         """
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 # Get base document data
                 document = await conn.fetchrow("""
                     SELECT d.*,
-                           count(*) OVER () as total_versions,
+                           count(v.version_id) as total_versions,
                            max(v.created_at) as last_version_date
                     FROM documents d
                     LEFT JOIN document_versions v ON d.document_id = v.document_id
@@ -642,14 +658,14 @@ class DocumentProcessor:
                 if not document:
                     return None
                 
+                processing_duration = document['updated_at'] - document['created_at']
+                
                 result = {
                     "document": dict(document),
                     "processing_history": {
                         "total_versions": document["total_versions"],
                         "last_updated": document["last_version_date"],
-                        "processing_duration": (
-                            document["updated_at"] - document["created_at"]
-                        ).total_seconds()
+                        "processing_duration": processing_duration.total_seconds()
                     }
                 }
                 
@@ -692,13 +708,14 @@ class DocumentProcessor:
                         return False
                 
                 # Create new version before reprocessing
+                previous_status = await conn.fetchval(
+                    "SELECT verification_status FROM documents WHERE document_id = $1",
+                    document_id
+                )
                 await self.create_version(document_id, {
                     "reason": "reprocess",
                     "forced": force,
-                    "previous_status": await conn.fetchval(
-                        "SELECT verification_status FROM documents WHERE document_id = $1",
-                        document_id
-                    )
+                    "previous_status": previous_status
                 })
                 
                 # Update document status
@@ -743,7 +760,7 @@ class DocumentProcessor:
                         verification_status,
                         document_type,
                         AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) as avg_processing_time,
-                        COUNT(*) FILTER (WHERE textract_results->>'confidence_score' < '0.8') as low_confidence_count
+                        COUNT(*) FILTER (WHERE (textract_results->>'confidence_score')::float < 0.8) as low_confidence_count
                     FROM documents
                     WHERE TRUE {where_clause}
                     GROUP BY verification_status, document_type
@@ -752,31 +769,38 @@ class DocumentProcessor:
                 FROM processing_stats
             """, *params)
             
+            summary = {}
+            by_document_type = {}
+            
+            for m in metrics:
+                status = m['verification_status']
+                doc_type = m['document_type']
+                
+                if status not in summary:
+                    summary[status] = {
+                        "count": 0,
+                        "avg_processing_time": 0.0
+                    }
+                summary[status]["count"] += 1
+                summary[status]["avg_processing_time"] += m['avg_processing_time']
+                
+                if doc_type not in by_document_type:
+                    by_document_type[doc_type] = {
+                        "total": 0,
+                        "low_confidence": 0
+                    }
+                by_document_type[doc_type]["total"] += 1
+                by_document_type[doc_type]["low_confidence"] += m['low_confidence_count']
+            
+            # Calculate average processing time
+            for status in summary:
+                count = summary[status]["count"]
+                total_time = summary[status]["avg_processing_time"]
+                summary[status]["avg_processing_time"] = total_time / count if count > 0 else 0.0
+            
             return {
-                "summary": {
-                    status: {
-                        "count": sum(1 for m in metrics if m["verification_status"] == status),
-                        "avg_processing_time": sum(
-                            m["avg_processing_time"] 
-                            for m in metrics 
-                            if m["verification_status"] == status
-                        ) / len([m for m in metrics if m["verification_status"] == status])
-                        if any(m["verification_status"] == status for m in metrics)
-                        else 0
-                    }
-                    for status in VerificationStatus
-                },
-                "by_document_type": {
-                    doc_type: {
-                        "total": sum(1 for m in metrics if m["document_type"] == doc_type),
-                        "low_confidence": sum(
-                            m["low_confidence_count"] 
-                            for m in metrics 
-                            if m["document_type"] == doc_type
-                        )
-                    }
-                    for doc_type in DocumentType
-                }
+                "summary": summary,
+                "by_document_type": by_document_type
             }
 
     async def archive_document(
@@ -853,12 +877,12 @@ class DocumentProcessor:
             ]
             
             for field in required_fields:
-                if not document[field]:
+                if not document.get(field):
                     messages.append(f"Missing required field: {field}")
             
             # Validate file existence
-            if document["storage_path"]:
-                file_exists = await self._check_file_exists(
+            if document.get("storage_path"):
+                file_exists = self._check_file_exists(
                     document["storage_path"]
                 )
                 if not file_exists:
@@ -877,14 +901,34 @@ class DocumentProcessor:
             return len(messages) == 0, messages
 
     def _check_file_exists(self, file_path: str) -> bool:
-        # Implementation of the method
+        """Check if a file exists at the given path."""
         return os.path.exists(file_path)
 
-# Assuming ClaimsProcessor is being imported and also defined locally, rename the local class to avoid conflict
-# For example, rename to LocalClaimsProcessor
+    async def process_claims(self, claims_data: Dict[str, Any]) -> bool:
+        """
+        Process a single claim.
+        
+        Args:
+            claims_data (Dict[str, Any]): The data of the claim to process.
+        
+        Returns:
+            bool: True if processed successfully, False otherwise.
+        """
+        try:
+            self.logger.info("Processing claim...", claim_id=claims_data.get("id"))
+            # Implement claim processing logic here
+            await asyncio.sleep(1)  # Simulate processing delay
+            self.logger.info("Claim processed successfully.", claim_id=claims_data.get("id"))
+            return True
+        except Exception as e:
+            self.logger.error("Error processing claim.", claim_id=claims_data.get("id"), error=str(e))
+            raise
 
-# Uncomment and modify the import below if you have an external ClaimsProcessor
-# from some_module import ClaimsProcessor as ImportedClaimsProcessor
+    async def close_connection(self):
+        """Close the database connection."""
+        if self.pool:
+            await self.pool.close()
+            self.logger.info("Database connection closed.")
 
 # Renamed the local ClaimsProcessor to avoid conflict
 class LocalClaimsProcessor:
@@ -915,7 +959,10 @@ class LocalClaimsProcessor:
             self.logger.error("Failed to connect to the database.", error=str(e))
             raise
 
-    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=10))
+    def _check_file_exists(self, file_path: str) -> bool:
+        """Check if a file exists at the given path."""
+        return os.path.exists(file_path)
+
     async def process_claims(self, claims_data: Dict[str, Any]) -> bool:
         """
         Process a single claim.
@@ -935,29 +982,3 @@ class LocalClaimsProcessor:
         except Exception as e:
             self.logger.error("Error processing claim.", claim_id=claims_data.get("id"), error=str(e))
             raise
-
-    async def close(self):
-        """Close the database connection."""
-        if self.database:
-            await self.database.close()
-            self.logger.info("Database connection closed.")
-
-# Example of fixing return type issues and attribute error
-
-# Fix for line 643
-def some_function() -> dict[str, Any]:
-    # Your logic here
-    if some_condition:
-        return {}
-    return {"key": "value"}
-
-# Fix for line 663
-some_variable: dict[Any, Any] = {"key": "value"}
-# or if it's a list of dictionaries
-some_variable: List[dict[Any, Any]] = [{"key": "value"}]
-
-# Fix for line 861
-class DocumentProcessor:
-    def _check_file_exists(self, file_path: str) -> bool:
-        # Implementation of the method
-        return os.path.exists(file_path)

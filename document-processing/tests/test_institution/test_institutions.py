@@ -35,7 +35,6 @@ class InstitutionFactory(Factory):
     subscription_tier = Faker('random_element', elements=('STANDARD', 'PREMIUM', 'ENTERPRISE'))
     status = 'ACTIVE'
     created_at = Faker('iso8601')
-    updated_at = Faker('iso8601')
 
 # Factory for User
 class UserFactory(Factory):

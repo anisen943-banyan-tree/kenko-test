@@ -272,6 +272,8 @@
 <span id="L262" class="lineno"><a class="lineno" href="#L262">262</a></span>
 <span id="L263" class="lineno"><a class="lineno" href="#L263">263</a></span>
 <span id="L264" class="lineno"><a class="lineno" href="#L264">264</a></span>
+<span id="L265" class="lineno"><a class="lineno" href="#L265">265</a></span>
+<span id="L266" class="lineno"><a class="lineno" href="#L266">266</a></span>
 </pre></td>
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from typing import Dict, List, Optional, Any</span>
 <span class="line-precise" title="No Anys on this line!">from datetime import datetime, timedelta</span>
@@ -480,8 +482,10 @@ Explicit (x2)">    async def _check_cache(self, claim: Dict[str, Any]) -&gt; Opt
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x7)
 Omitted Generics (x2)">            claim_id = claim.get("claim_id")</span>
+<span class="line-any" title="Any Types on this line: 
+Explicit (x3)">            key = claim_id if claim_id is not None else ""</span>
 <span class="line-imprecise" title="Any Types on this line: 
-Explicit (x4)">            cached_result = await self.cache.get(claim_id)</span>
+Explicit (x4)">            cached_result = await self.cache.get(key)</span>
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x1)">            if cached_result:</span>
 <span class="line-any" title="Any Types on this line: 
@@ -604,15 +608,16 @@ Explicit (x2)">    async def _update_cache(self, claim: Dict[str, Any], result: 
 <span class="line-imprecise" title="Any Types on this line: 
 Explicit (x7)
 Omitted Generics (x2)">            claim_id = claim.get("claim_id")</span>
+<span class="line-any" title="Any Types on this line: 
+Explicit (x3)">            key = claim_id if claim_id is not None else ""</span>
 <span class="line-imprecise" title="Any Types on this line: 
-Explicit (x3)">            await self.cache.update(claim_id, result)</span>
+Explicit (x3)">            await cache.update(key, result)</span>
 <span class="line-any" title="Any Types on this line: 
 Explicit (x7)">            structlog.get_logger().info("Cache updated", claim_id=claim_id)</span>
 <span class="line-precise" title="No Anys on this line!">        except Exception as e:</span>
 <span class="line-any" title="Any Types on this line: 
-Explicit (x12)
-Omitted Generics (x2)">            structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim.get("claim_id"))</span>
-<span class="line-precise" title="No Anys on this line!">            raise CacheError("Error updating cache")</span>
+Explicit (x7)">            structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim_id)</span>
+<span class="line-empty" title="No Anys on this line!">            raise</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">    def _calculate_processing_time(self) -&gt; float:</span>
 <span class="line-empty" title="No Anys on this line!">        """Calculate the total time taken to process the claim."""</span>

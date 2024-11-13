@@ -385,7 +385,7 @@
 <span class="line-precise" title="No Anys on this line!">from httpx import AsyncClient</span>
 <span class="line-precise" title="No Anys on this line!">from fastapi import FastAPI, HTTPException</span>
 <span class="line-precise" title="No Anys on this line!">from unittest.mock import patch, AsyncMock</span>
-<span class="line-any" title="No Anys on this line!">from .routers import institutions</span>
+<span class="line-any" title="No Anys on this line!">from document_processing.routers import institutions  # Adjusted import</span>
 <span class="line-any" title="No Anys on this line!">from slowapi import Limiter, _rate_limit_exceeded_handler</span>
 <span class="line-any" title="No Anys on this line!">from slowapi.util import get_remote_address</span>
 <span class="line-precise" title="No Anys on this line!">from fastapi.middleware.cors import CORSMiddleware</span>
@@ -396,7 +396,8 @@
 <span class="line-any" title="No Anys on this line!">import jwt</span>
 <span class="line-precise" title="No Anys on this line!">import os</span>
 <span class="line-precise" title="No Anys on this line!">import asyncio</span>
-<span class="line-any" title="No Anys on this line!">from ..routers.institutions import InstitutionManager  # Add this import</span>
+<span class="line-any" title="No Anys on this line!">import asyncpg  # Added import</span>
+<span class="line-any" title="No Anys on this line!">from document_processing.models import InstitutionCreate, InstitutionUpdate  # Added import</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-empty" title="No Anys on this line!"># Define allowed origins for testing</span>
 <span class="line-precise" title="No Anys on this line!">origins = [</span>
@@ -425,8 +426,6 @@ Unimported (x3)">    subscription_tier = Faker('random_element', elements=('STAN
 <span class="line-precise" title="No Anys on this line!">    status = 'ACTIVE'</span>
 <span class="line-any" title="Any Types on this line: 
 Unimported (x3)">    created_at = Faker('iso8601')</span>
-<span class="line-any" title="Any Types on this line: 
-Unimported (x3)">    updated_at = Faker('iso8601')</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-empty" title="No Anys on this line!"># Factory for User</span>
 <span class="line-precise" title="No Anys on this line!">class UserFactory(Factory):</span>
@@ -914,8 +913,10 @@ Unannotated (x3)">        assert response.status_code == 500</span>
 Unannotated (x5)">        assert response.json()["detail"] == "Error retrieving institutions"</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">class InstitutionManager:</span>
-<span class="line-precise" title="No Anys on this line!">    def __init__(self, pool: asyncpg.Pool):</span>
-<span class="line-precise" title="No Anys on this line!">        self.pool = pool</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)">    def __init__(self, pool: asyncpg.Pool):</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x2)">        self.pool = pool</span>
 <span class="line-empty" title="No Anys on this line!">        </span>
 <span class="line-any" title="No Anys on this line!">    async def list_institutions(self):</span>
 <span class="line-any" title="Any Types on this line: 
@@ -923,29 +924,40 @@ Unannotated (x4)">        async with self.pool.acquire() as conn:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x3)">            return await conn.fetch("SELECT * FROM institutions ORDER BY name")</span>
 <span class="line-empty" title="No Anys on this line!">            </span>
-<span class="line-imprecise" title="Any Types on this line: 
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x1)">    async def create_institution(self, institution: InstitutionCreate):</span>
-<span class="line-precise" title="No Anys on this line!">        async with self.pool.acquire() as conn:</span>
-<span class="line-precise" title="No Anys on this line!">            return await conn.fetchrow("""</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">        async with self.pool.acquire() as conn:</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)">            return await conn.fetchrow("""</span>
 <span class="line-empty" title="No Anys on this line!">                INSERT INTO institutions (name, code, contact_email, contact_phone, subscription_tier, status)</span>
 <span class="line-empty" title="No Anys on this line!">                VALUES ($1, $2, $3, $4, $5, 'ACTIVE')</span>
 <span class="line-empty" title="No Anys on this line!">                RETURNING *</span>
-<span class="line-precise" title="No Anys on this line!">            """, institution.name, institution.code, institution.contact_email, </span>
-<span class="line-precise" title="No Anys on this line!">                institution.contact_phone, institution.subscription_tier)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">            """, institution.name, institution.code, institution.contact_email, </span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">                institution.contact_phone, institution.subscription_tier)</span>
 <span class="line-empty" title="No Anys on this line!"></span>
-<span class="line-imprecise" title="Any Types on this line: 
+<span class="line-any" title="Any Types on this line: 
+Unimported (x1)
 Unannotated (x1)">    async def update_institution(self, institution_id: int, institution: InstitutionUpdate):</span>
-<span class="line-precise" title="No Anys on this line!">        async with self.pool.acquire() as conn:</span>
-<span class="line-precise" title="No Anys on this line!">            return await conn.fetchrow("""</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">        async with self.pool.acquire() as conn:</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x3)">            return await conn.fetchrow("""</span>
 <span class="line-empty" title="No Anys on this line!">                UPDATE institutions </span>
 <span class="line-empty" title="No Anys on this line!">                SET name = $1, code = $2, contact_email = $3,</span>
 <span class="line-empty" title="No Anys on this line!">                    contact_phone = $4, subscription_tier = $5,</span>
 <span class="line-empty" title="No Anys on this line!">                    status = $6, updated_at = NOW()</span>
 <span class="line-empty" title="No Anys on this line!">                WHERE id = $7</span>
 <span class="line-empty" title="No Anys on this line!">                RETURNING *</span>
-<span class="line-precise" title="No Anys on this line!">            """, institution.name, institution.code, institution.contact_email,</span>
-<span class="line-precise" title="No Anys on this line!">                institution.contact_phone, institution.subscription_tier,</span>
-<span class="line-precise" title="No Anys on this line!">                institution.status, institution_id)</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x6)">            """, institution.name, institution.code, institution.contact_email,</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x4)">                institution.contact_phone, institution.subscription_tier,</span>
+<span class="line-any" title="Any Types on this line: 
+Unimported (x2)">                institution.status, institution_id)</span>
 </pre></td>
 </tr></tbody>
 </table>

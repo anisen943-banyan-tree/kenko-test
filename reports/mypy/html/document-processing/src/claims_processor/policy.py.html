@@ -244,6 +244,8 @@
 <span id="L234" class="lineno"><a class="lineno" href="#L234">234</a></span>
 <span id="L235" class="lineno"><a class="lineno" href="#L235">235</a></span>
 <span id="L236" class="lineno"><a class="lineno" href="#L236">236</a></span>
+<span id="L237" class="lineno"><a class="lineno" href="#L237">237</a></span>
+<span id="L238" class="lineno"><a class="lineno" href="#L238">238</a></span>
 </pre></td>
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from typing import Dict, List, Optional</span>
 <span class="line-precise" title="No Anys on this line!">from datetime import datetime, timedelta</span>
@@ -288,6 +290,10 @@ Unannotated (x4)">        for sub_limit in self.sub_limits.values():</span>
 Unannotated (x2)">            if sub_limit &lt; 0:</span>
 <span class="line-any" title="Any Types on this line: 
 Unannotated (x1)">                raise ValueError("Sub-limits must be non-negative")</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x2)">        if self.coverage_limit &gt; 100000:</span>
+<span class="line-any" title="Any Types on this line: 
+Unannotated (x1)">            print("High coverage limit")</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="Any Types on this line: 
 Omitted Generics (x6)">@dataclass</span>
