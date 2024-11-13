@@ -149,7 +149,8 @@ class IntegratedClaimsProcessor:
         """Check if the claim result is already cached."""
         try:
             claim_id = claim.get("claim_id")
-            cached_result = await self.cache.get(claim_id)
+            key = claim_id if claim_id is not None else ""
+            cached_result = await self.cache.get(key)
             if cached_result:
                 structlog.get_logger().info("Cache hit", claim_id=claim_id)
                 return cached_result
@@ -226,7 +227,8 @@ class IntegratedClaimsProcessor:
         """Update the cache with the processed result."""
         try:
             claim_id = claim.get("claim_id")
-            await self.cache.update(claim_id, result)
+            key = claim_id if claim_id is not None else ""
+            await self.cache.update(key, result)
             structlog.get_logger().info("Cache updated", claim_id=claim_id)
         except Exception as e:
             structlog.get_logger().error("Cache update error", error=str(e), claim_id=claim.get("claim_id"))

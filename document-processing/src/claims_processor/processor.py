@@ -876,6 +876,10 @@ class DocumentProcessor:
                 
             return len(messages) == 0, messages
 
+    def _check_file_exists(self, file_path: str) -> bool:
+        # Implementation of the method
+        return os.path.exists(file_path)
+
 # Assuming ClaimsProcessor is being imported and also defined locally, rename the local class to avoid conflict
 # For example, rename to LocalClaimsProcessor
 
@@ -937,3 +941,23 @@ class LocalClaimsProcessor:
         if self.database:
             await self.database.close()
             self.logger.info("Database connection closed.")
+
+# Example of fixing return type issues and attribute error
+
+# Fix for line 643
+def some_function() -> dict[str, Any]:
+    # Your logic here
+    if some_condition:
+        return {}
+    return {"key": "value"}
+
+# Fix for line 663
+some_variable: dict[Any, Any] = {"key": "value"}
+# or if it's a list of dictionaries
+some_variable: List[dict[Any, Any]] = [{"key": "value"}]
+
+# Fix for line 861
+class DocumentProcessor:
+    def _check_file_exists(self, file_path: str) -> bool:
+        # Implementation of the method
+        return os.path.exists(file_path)

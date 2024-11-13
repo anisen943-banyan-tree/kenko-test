@@ -1,0 +1,22 @@
+Mypy Type Check Coverage Summary
+================================
+
+Script: index
+
++-------------------------------------------+-------------------+----------+
+| Module                                    | Imprecision       | Lines    |
++-------------------------------------------+-------------------+----------+
+| src.claims_processor                      |  25.00% imprecise |    4 LOC |
+| src.claims_processor.exceptions           |   0.00% imprecise |   11 LOC |
+| src.claims_processor.handlers             |  23.55% imprecise |  310 LOC |
+| src.claims_processor.philhealth           |  22.63% imprecise |  137 LOC |
+| src.claims_processor.policy               |  33.47% imprecise |  236 LOC |
+| src.claims_processor.processor            |  24.92% imprecise |  939 LOC |
+| src.claims_processor.processor_production |  26.52% imprecise |  264 LOC |
+| test_claims                               |  39.58% imprecise |  144 LOC |
+| test_document_api                         |  66.04% imprecise |   53 LOC |
+| test_document_processor                   |  44.83% imprecise |   58 LOC |
+| test_institutions                         |  63.71% imprecise |  372 LOC |
++-------------------------------------------+-------------------+----------+
+| Total                                     |  33.35% imprecise | 2528 LOC |
++-------------------------------------------+-------------------+----------+

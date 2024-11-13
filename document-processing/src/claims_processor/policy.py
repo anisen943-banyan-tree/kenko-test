@@ -33,6 +33,8 @@ class PolicyBenefit:
         for sub_limit in self.sub_limits.values():
             if sub_limit < 0:
                 raise ValueError("Sub-limits must be non-negative")
+        if self.coverage_limit > 100000:
+            print("High coverage limit")
 
 @dataclass
 class PolicyTerms:

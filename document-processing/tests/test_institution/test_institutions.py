@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from fastapi import FastAPI, HTTPException
 from unittest.mock import patch, AsyncMock
-from .routers import institutions
+from document_processing.routers import institutions  # Adjusted import
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
 import jwt
 import os
 import asyncio
-from ..routers.institutions import InstitutionManager  # Add this import
+import asyncpg  # Added import
+from document_processing.models import InstitutionCreate, InstitutionUpdate  # Added import
 
 # Define allowed origins for testing
 origins = [
