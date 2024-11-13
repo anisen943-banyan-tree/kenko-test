@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import uuid
 
 # Local import since test file is in the same directory
-from document_processor import (
+from src.document.document_processor import (
     DocumentProcessor,
     ProcessorConfig,
     DocumentMetadata,

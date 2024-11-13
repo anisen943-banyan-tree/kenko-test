@@ -9,3 +9,8 @@ airtable-python-wrapper>=0.15.0
 pydantic>=2.0.0
 python-dotenv>=1.0.0
 httpx
+fastapi>=0.68.0
+PyJWT>=2.1.0
+httpx>=0.18.0  # For testing FastAPI
+pytest>=6.2.5
+pytest-asyncio>=0.15.1

@@ -1,6 +1,6 @@
 import pytest
 from httpx import AsyncClient
-from document_api import app
+from src.api.routes.documents import app
 
 @pytest.fixture
 def mock_document_id():
