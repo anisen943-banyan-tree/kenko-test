@@ -1021,7 +1021,7 @@ class DocumentProcessor:
             return False
 
 # Renamed the local ClaimsProcessor to avoid conflict
-class LocalClaimsProcessor:
+class ClaimsProcessor:
     """Local ClaimsProcessor class handling specific processing tasks."""
     
     def __init__(self, config: ProcessorConfig):
