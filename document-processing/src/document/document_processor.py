@@ -7,6 +7,8 @@ from enum import Enum
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from document_processing.src.claims_processor import VerificationStatus, DocumentType, ProcessorConfig, DocumentMetadata
+
 class VerificationStatus(str, Enum):
     PENDING = "Pending"
     PROCESSING = "Processing"
