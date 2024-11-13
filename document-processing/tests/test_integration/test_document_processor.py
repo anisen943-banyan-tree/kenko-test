@@ -39,12 +39,14 @@ async def document_processor(mock_pool, processor_config):
     processor = DocumentProcessor(mock_pool, processor_config)
     yield processor
     await processor.close()
+
 class TestDocumentVersioning:
     """Test suite for document versioning functionality."""
+    
     @pytest.mark.asyncio
     async def test_create_version(self, document_processor):
         """Test creating a new document version."""
-         # Setup
+        # Setup
         document_id = str(uuid.uuid4())
         changes = {
             "field_updated": "status",
@@ -54,5 +56,6 @@ class TestDocumentVersioning:
         
         # Execute
         version_id = await document_processor.create_version(document_id, changes)
+        
         # Verify
         assert version_id is not None, "Version ID should not be None"
