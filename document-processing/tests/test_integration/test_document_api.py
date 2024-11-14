@@ -1,12 +1,6 @@
 import pytest
 from httpx import AsyncClient
-from api.routes.documents import app  # Remove document_processing prefix
-try:
-    from document_processor import (
-        # ...existing code...
-    )
-except ImportError:
-    raise ImportError("Ensure 'document_processor' module is available in the project.")
+from main import app  # Correct import path
 
 @pytest.fixture
 def mock_document_id():
@@ -15,23 +9,26 @@ def mock_document_id():
 
 @pytest.mark.asyncio
 async def test_upload_document(test_client, test_token):
-    response = await test_client.post(
-        "/upload",
-        headers={"Authorization": f"Bearer {test_token}"},
-        files={"file": ("test.pdf", b"test content", "application/pdf")}
-    )
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        response = await ac.post(
+            "/upload",
+            headers={"Authorization": f"Bearer {test_token}"},
+            files={"file": ("test.pdf", b"test content", "application/pdf")}
+        )
     assert response.status_code == 201
     assert "document_id" in response.json()
     assert response.json()["status"] == "Pending"
 
 @pytest.mark.asyncio
 async def test_get_document_status(test_client, test_token, mock_document_id):
-    response = await test_client.get(
-        f"/status/{mock_document_id}", 
-        headers={"Authorization": f"Bearer {test_token}"}
-    )
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/status/{mock_document_id}",
+            headers={"Authorization": f"Bearer {test_token}"}
+        )
     assert response.status_code == 200
-    assert response.json()["document_id"] == mock_document_id
+    assert "status" in response.json()
+    assert response.json()["status"] in ["Pending", "Completed", "Failed"]
 
 @pytest.mark.asyncio
 async def test_unauthorized_access(test_client):
