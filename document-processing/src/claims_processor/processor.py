@@ -1,4 +1,3 @@
-# processor.py
 import asyncio
 import asyncpg
 import uuid
@@ -49,6 +48,11 @@ class DocumentType(str, Enum):
     PRESCRIPTION = "Prescription"
     PHILHEALTH_CLAIM = "PhilHealthClaim"
 
+class PriorityLevel(str, Enum):
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
 @dataclass
 class ProcessorConfig:
     """Configuration for document processor with enhanced settings."""
@@ -69,6 +73,7 @@ class ProcessorConfig:
     index_rebuild_threshold: int = 1000000000  # 1GB
     partition_interval: str = "yearly"  # or "monthly"
     storage_path: str = "/path/to/documents"  # Default storage path
+    priority: PriorityLevel = PriorityLevel.MEDIUM
 
 @dataclass
 class DocumentMetadata:
@@ -84,6 +89,7 @@ class DocumentMetadata:
     verification_notes: Optional[str] = None
     metadata: Dict = field(default_factory=dict)
     processing_stats: Dict = field(default_factory=dict)
+    priority_level: PriorityLevel = PriorityLevel.MEDIUM
 
 @dataclass
 class PoolHealthMetrics:

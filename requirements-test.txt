@@ -15,3 +15,5 @@ fastapi-cache==0.1.0
 pydantic-settings>=0.1.0
 tenacity>=8.0.1
 structlog>=21.1.0
+slowapi>=0.1.4
+fastapi_limiter>=0.1.0

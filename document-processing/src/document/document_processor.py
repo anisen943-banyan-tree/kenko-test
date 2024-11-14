@@ -1,62 +1,13 @@
 import asyncio
 import asyncpg
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from claims_processor.processor import ProcessorConfig  # Ensure this import is correct
-
-# Remove this line as it's causing circular import
-# from document_processing.src.claims_processor import VerificationStatus, DocumentType, ProcessorConfig, DocumentMetadata
-
-# Remove duplicate class definitions
-# class VerificationStatus(str, Enum):
-#     PENDING = "Pending"
-#     PROCESSING = "Processing"
-#     VERIFIED = "Verified"
-#     REJECTED = "Rejected"
-#     ARCHIVED = "Archived"
-
-# class DocumentType(str, Enum):
-#     DISCHARGE_SUMMARY = "DischargeNote"
-#     BILL = "Bill"
-#     LAB_REPORT = "LabReport"
-#     PRESCRIPTION = "Prescription"
-#     PHILHEALTH_CLAIM = "PhilHealthClaim"
-
-# @dataclass
-# class ProcessorConfig:
-#     """Configuration for document processor with enhanced settings."""
-#     document_bucket: str
-#     confidence_threshold: float = 0.8
-#     batch_size: int = 10
-#     max_connections: int = 20
-#     min_connections: int = 5
-#     connection_timeout: int = 10
-#     cleanup_batch_size: int = 1000
-#     archive_after_days: int = 365
-#     index_rebuild_interval: int = 7
-#     maintenance_interval: int = 86400  # 24 hours
-#     statement_timeout: int = 30000  # 30 seconds
-#     idle_timeout: int = 300  # 5 minutes
-
-# @dataclass
-# class DocumentMetadata:
-#     """Document metadata with enhanced tracking fields."""
-#     document_id: str
-#     claim_id: str
-#     document_type: DocumentType
-#     upload_timestamp: datetime
-#     storage_path: str
-#     verification_status: VerificationStatus
-#     confidence_scores: Dict[str, float]
-#     verified_by: Optional[str] = None
-#     verification_notes: Optional[str] = None
-#     metadata: Dict = field(default_factory=dict)
-#     processing_stats: Dict = field(default_factory=dict)
+from claims_processor.processor import ProcessorConfig, DocumentMetadata, VerificationStatus, DocumentType  # Ensure this import is correct
 
 class DocumentProcessor:
     """Enhanced document processor with improved PostgreSQL optimizations."""
