@@ -52,13 +52,18 @@ async def log_requests(request: Request, call_next):
 
 @app.on_event("startup")
 async def startup():
-    app.state.pool = await asyncpg.create_pool(
-        dsn=settings.database_url,
-        min_size=1,
-        max_size=10,
-        max_inactive_connection_lifetime=300
-    )
-    FastAPICache.init(InMemoryBackend())
+    try:
+        app.state.pool = await asyncpg.create_pool(
+            dsn=settings.database_url,
+            min_size=1,
+            max_size=10,
+            max_inactive_connection_lifetime=300
+        )
+        FastAPICache.init(InMemoryBackend())
+        logging.info("Database pool created successfully.")
+    except Exception as e:
+        logging.error(f"Error creating database pool: {e}")
+        raise
 
 @app.on_event("shutdown")
 async def shutdown():
