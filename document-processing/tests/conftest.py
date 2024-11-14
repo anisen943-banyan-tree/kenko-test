@@ -29,7 +29,7 @@ async def db_pool() -> AsyncGenerator[asyncpg.Pool, None]:
 @pytest.fixture
 async def test_client():
     """Create test client for FastAPI app."""
-    from api.routes.documents import app
+    from main import app  # Changed import to use main app
     from httpx import AsyncClient
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client

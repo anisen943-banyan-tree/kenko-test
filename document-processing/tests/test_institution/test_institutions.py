@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from fastapi import FastAPI, HTTPException
 from unittest.mock import patch, AsyncMock
-from document_processing.routers import institutions  # Adjusted import
+from api.routes import institutions  # Adjusted import
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +15,11 @@ import os
 import asyncio
 import asyncpg  # Added import
 from document_processing.models import InstitutionCreate, InstitutionUpdate  # Added import
+
+try:
+    from pydantic import BaseSettings  # Updated import
+except ImportError:
+    raise ImportError("Ensure 'pydantic_settings' module is installed.")
 
 # Define allowed origins for testing
 origins = [

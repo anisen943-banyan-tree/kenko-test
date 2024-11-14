@@ -3,15 +3,28 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 import uuid
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Local import since test file is in the same directory
-from src.document.document_processor import (
-    DocumentProcessor,
-    ProcessorConfig,
-    DocumentMetadata,
-    DocumentType,
-    VerificationStatus
-)
+try:
+    from document.document_processor import (
+        DocumentProcessor,
+        ProcessorConfig,
+        DocumentMetadata,
+        DocumentType,
+        VerificationStatus
+    )
+except ImportError:
+    raise ImportError("Ensure 'document_processor' module is available in the project.")
+
+# Ensure the import path for app is correct
+from ...api.routes.documents import app
+
+# Ensure the some_module is available in the project
+try:
+    from claims_processor.processor import ProcessorConfig  # Ensure this import is correct
+except ImportError:
+    raise ImportError("Ensure 'claims_processor.processor' module is available in the project.")
 
 @pytest.fixture
 async def processor_config():

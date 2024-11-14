@@ -1,6 +1,12 @@
 import pytest
 from httpx import AsyncClient
-from document_processing.api.routes.documents import app  # Use absolute import
+from api.routes.documents import app  # Remove document_processing prefix
+try:
+    from document_processor import (
+        # ...existing code...
+    )
+except ImportError:
+    raise ImportError("Ensure 'document_processor' module is available in the project.")
 
 @pytest.fixture
 def mock_document_id():

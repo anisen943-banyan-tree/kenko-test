@@ -131,7 +131,9 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-test.txt
+          pip install -r document-processing/requirements.txt
+          pip install -r document-processing/requirements-test.txt
+          pip install asyncpg  # Explicitly install asyncpg
 
       # Set up SSH agent and load the SSH key for tunnel access
       - name: Set up SSH key
@@ -153,7 +155,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/document-processing/src
         run: |
           mkdir -p reports/tests
-          pytest document-processing/tests/ -v --cov=document-processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
+          python -m pytest document-processing/tests/ -v --cov=document-processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
 
       - name: Upload test results
         if: always()

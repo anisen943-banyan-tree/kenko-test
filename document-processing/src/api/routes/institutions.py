@@ -2,7 +2,8 @@ import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr, validator, BaseSettings
+from pydantic import BaseModel, EmailStr, validator
+from pydantic_settings import BaseSettings  # Updated import
 from datetime import datetime
 import asyncpg
 import structlog
