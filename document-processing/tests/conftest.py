@@ -31,7 +31,7 @@ async def test_client():
     """Create test client for FastAPI app."""
     from main import app  # Changed import to use main app
     from httpx import AsyncClient
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=app, base_url="http://test", headers={"Content-Type": "application/json"}) as client:
         yield client
 
 @pytest.fixture
@@ -46,5 +46,13 @@ def test_token():
         "exp": datetime.utcnow() + timedelta(hours=1)
     }
     return jwt.encode(payload, "your-secret-key", algorithm="HS256")
+
+@pytest.fixture
+def mock_settings(mocker):
+    """Mock Settings class."""
+    from src.config import Settings
+    settings = Settings()
+    mocker.patch.object(settings, 'some_setting', 'mocked_value')
+    return settings
 
 # Add any existing initialization from __init__.py if needed

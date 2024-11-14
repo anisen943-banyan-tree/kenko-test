@@ -1,6 +1,11 @@
 import pytest
 from httpx import AsyncClient
 from main import app  # Correct import path
+from fastapi.testclient import TestClient
+
+@pytest.fixture
+def test_client():
+    return TestClient(app)
 
 @pytest.fixture
 def mock_document_id():
@@ -32,26 +37,29 @@ async def test_get_document_status(test_client, test_token, mock_document_id):
 
 @pytest.mark.asyncio
 async def test_unauthorized_access(test_client):
-    response = await test_client.post(
-        "/upload",
-        files={"file": ("test.pdf", b"test content", "application/pdf")}
-    )
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        response = await ac.post(
+            "/upload",
+            files={"file": ("test.pdf", b"test content", "application/pdf")}
+        )
     assert response.status_code == 401
 
 @pytest.mark.asyncio
 async def test_invalid_document_type(test_client, test_token):
-    response = await test_client.post(
-        "/upload",
-        headers={"Authorization": f"Bearer {test_token}"},
-        files={"file": ("test.txt", b"test content", "text/plain")}
-    )
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        response = await ac.post(
+            "/upload",
+            headers={"Authorization": f"Bearer {test_token}"},
+            files={"file": ("test.txt", b"test content", "text/plain")}
+        )
     assert response.status_code == 400
 
 @pytest.mark.asyncio
 async def test_non_existent_document_id(test_client, test_token):
-    non_existent_document_id = "non-existent-document-id"
-    response = await test_client.get(
-        f"/status/{non_existent_document_id}", 
-        headers={"Authorization": f"Bearer {test_token}"}
-    )
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        non_existent_document_id = "non-existent-document-id"
+        response = await ac.get(
+            f"/status/{non_existent_document_id}", 
+            headers={"Authorization": f"Bearer {test_token}"}
+        )
     assert response.status_code == 404

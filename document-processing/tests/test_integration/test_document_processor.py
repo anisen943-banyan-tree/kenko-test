@@ -18,13 +18,15 @@ except ImportError:
     raise ImportError("Ensure 'document_processor' module is available in the project.")
 
 # Ensure the import path for app is correct
-from ...api.routes.documents import app
+from document_processing.src.api.routes.documents import app
 
 # Ensure the some_module is available in the project
 try:
     from claims_processor.processor import ProcessorConfig  # Ensure this import is correct
 except ImportError:
     raise ImportError("Ensure 'claims_processor.processor' module is available in the project.")
+
+from document.models import DocumentMetadata
 
 @pytest.fixture
 async def processor_config():

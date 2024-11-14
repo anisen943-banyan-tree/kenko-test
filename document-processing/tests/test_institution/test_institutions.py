@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from fastapi import FastAPI, HTTPException
 from unittest.mock import patch, AsyncMock
-from api.routes import institutions  # Adjusted import
+from document_processing.src.api.routes import institutions  # Adjusted import
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,8 +54,19 @@ class UserFactory(Factory):
     is_active = True
     created_at = Faker('iso8601')
 
+@pytest.fixture(scope="session")
+def test_env_setup():
+    """Fixture to set up the test environment configuration."""
+    os.environ["JWT_SECRET_KEY"] = "test_secret"
+    os.environ["DATABASE_URL"] = "postgresql://test_user:test_password@localhost/test_db"
+    os.environ["TEST_RATE_LIMIT"] = "10/minute"
+    yield
+    os.environ.pop("JWT_SECRET_KEY")
+    os.environ.pop("DATABASE_URL")
+    os.environ.pop("TEST_RATE_LIMIT")
+
 @pytest.fixture
-async def async_client():
+async def async_client(test_env_setup):
     """
     Fixture to create an asynchronous HTTP client for testing.
     Sets up the FastAPI app with rate limiting and CORS middleware.
@@ -84,7 +95,7 @@ async def async_client():
         yield ac
 
 @pytest.fixture
-async def mock_db_pool():
+async def mock_db_pool(test_env_setup):
     """Mock database pool fixture."""
     return AsyncMock()
 
