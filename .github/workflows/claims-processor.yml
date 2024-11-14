@@ -131,8 +131,8 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r /Users/aniruddhasen/Github Repo/kenko-test/requirements.txt
-          pip install -r document-processing/requirements-test.txt
+          pip install -r "/Users/aniruddhasen/Github Repo/kenko-test/requirements.txt"
+          pip install -r "/Users/aniruddhasen/Github Repo/kenko-test/requirements-test.txt"
           pip install asyncpg  # Explicitly install asyncpg
 
       # Set up SSH agent and load the SSH key for tunnel access
