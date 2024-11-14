@@ -12,10 +12,11 @@ import asyncpg
 import structlog
 from datetime import datetime, timedelta
 import jwt
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator, ValidationError
 import logging
 import uuid
 from pytz import UTC
+import aioredis  # Added import
 
 # Initialize logging with additional context
 logger = structlog.get_logger()
@@ -73,14 +74,14 @@ class ClaimRequest(BaseModel):
     total_amount: float
     documents: List[str]  # List of document IDs
 
-    @field_validator('total_amount', mode='before')
+    @validator('total_amount', pre=True)
     @classmethod
     def validate_total_amount(cls, value):
-        if value < 0:
+        if value is None or value < 0:
             raise ValueError('Total amount must be non-negative')
         return value
 
-    @field_validator('discharge_date', mode='before')
+    @validator('discharge_date', pre=True)
     @classmethod
     def validate_dates(cls, discharge_date, values):
         admission_date = values.get('admission_date')
@@ -111,6 +112,14 @@ async def data_error_handler(request: Request, exc: asyncpg.exceptions.DataError
     return JSONResponse(
         status_code=400,
         content={"status": "error", "error": "Invalid data", "trace_id": request.state.trace_id}
+    )
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    logging.error(f"Validation error: {exc}", extra={"trace_id": request.state.trace_id})
+    return JSONResponse(
+        status_code=422,
+        content={"status": "error", "error": exc.errors(), "trace_id": request.state.trace_id}
     )
 
 # Enhanced database pool management
@@ -227,9 +236,9 @@ async def create_claim(
                description="Retrieve the details of a specific claim by its ID.")
 async def get_claim(
     claim_id: str,
+    commons: Annotated[dict, Depends(common_parameters)],
     token_payload: Dict = Depends(verify_token),
-    pool: asyncpg.Pool = Depends(get_db_pool),
-    commons: Annotated[dict, Depends(common_parameters)]
+    pool: asyncpg.Pool = Depends(get_db_pool)
 ):
     """Get claim details"""
     trace_id = request.state.trace_id
@@ -255,11 +264,11 @@ async def get_claim(
                summary="List claims",
                description="List all claims with optional filters for status and member ID.")
 async def list_claims(
+    commons: Annotated[dict, Depends(common_parameters)],
     status: Optional[str] = None,
     member_id: Optional[str] = None,
     token_payload: Dict = Depends(verify_token),
-    pool: asyncpg.Pool = Depends(get_db_pool),
-    commons: Annotated[dict, Depends(common_parameters)]
+    pool: asyncpg.Pool = Depends(get_db_pool)
 ):
     """List claims with optional filters"""
     trace_id = request.state.trace_id
@@ -297,9 +306,9 @@ async def list_claims(
 async def adjudicate_claim(
     claim_id: str,
     background_tasks: BackgroundTasks,
+    commons: Annotated[dict, Depends(common_parameters)],
     token_payload: Dict = Depends(verify_token),
-    pool: asyncpg.Pool = Depends(get_db_pool),
-    commons: Annotated[dict, Depends(common_parameters)]
+    pool: asyncpg.Pool = Depends(get_db_pool)
 ):
     """Trigger claim adjudication"""
     trace_id = request.state.trace_id
