@@ -420,7 +420,7 @@ async def list_institution_users(
 import pytest
 from httpx import AsyncClient
 from fastapi import FastAPI
-from .routers import institutions
+from src.api.routes import institutions
 from fastapi.middleware.cors import CORSMiddleware
 
 origins = [

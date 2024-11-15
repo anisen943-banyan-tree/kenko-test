@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from fastapi import FastAPI, HTTPException
 from unittest.mock import patch, AsyncMock
-from document_processing.src.api.routes import institutions  # Adjusted import
+from src.api.routes import institutions  # Adjusted import
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,8 +14,8 @@ import jwt
 import os
 import asyncio
 import asyncpg  # Added import
-from document_processing.src.api.models import InstitutionCreate, InstitutionUpdate  # Adjusted import
-from document_processing.src.api.main import app  # Updated import
+from src.api.models import InstitutionCreate, InstitutionUpdate  # Adjusted import
+from src.api.main import app  # Updated import
 
 try:
     from pydantic import BaseSettings  # Updated import
@@ -102,10 +102,10 @@ async def mock_db_pool(test_env_setup):
 @pytest.mark.asyncio
 async def test_list_institutions_success(async_client, mock_db_pool):
     """Test that the list of institutions is retrieved successfully."""
-    with patch('document_processing.src.api.routes.institutions.get_db_pool', return_value=mock_db_pool), \
-         patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routes.institutions.get_db_pool', return_value=mock_db_pool), \
+         patch('src.api.routes.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
-        with patch('document_processing.src.api.routes.institutions.InstitutionManager.list_institutions', new_callable=AsyncMock) as mock_list:
+        with patch('src.api.routes.institutions.InstitutionManager.list_institutions', new_callable=AsyncMock) as mock_list:
             institutions_data = InstitutionFactory.create_batch(2)
             mock_list.return_value = institutions_data
             response = await async_client.get("/admin/institutions/")
@@ -119,8 +119,8 @@ async def test_list_institutions_success(async_client, mock_db_pool):
 @pytest.mark.asyncio
 async def test_create_institution_success(async_client):
     """Test that a new institution can be created successfully."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_create.return_value = InstitutionFactory()
         institution_data = {
@@ -140,8 +140,8 @@ async def test_create_institution_success(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_duplicate_code(async_client):
     """Test that creating an institution with a duplicate code fails."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_create.side_effect = UniqueViolationError("duplicate key value violates unique constraint")
         institution_data = {
@@ -158,8 +158,8 @@ async def test_create_institution_duplicate_code(async_client):
 @pytest.mark.asyncio
 async def test_update_institution_success(async_client):
     """Test that an existing institution can be updated successfully."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.update_institution', new_callable=AsyncMock) as mock_update:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.InstitutionManager.update_institution', new_callable=AsyncMock) as mock_update:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_update.return_value = InstitutionFactory()
         update_data = {
@@ -179,10 +179,10 @@ async def test_update_institution_success(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_user_success(async_client):
     """Test that a new user can be created for an institution successfully."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.fetch_institution', new_callable=AsyncMock) as mock_fetch, \
-         patch('document_processing.src.api.routes.institutions.create_user_institution_mapping', new_callable=AsyncMock) as mock_mapping, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.conn.fetchrow', new_callable=AsyncMock) as mock_fetchrow:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.fetch_institution', new_callable=AsyncMock) as mock_fetch, \
+         patch('src.api.routes.institutions.create_user_institution_mapping', new_callable=AsyncMock) as mock_mapping, \
+         patch('src.api.routes.institutions.InstitutionManager.conn.fetchrow', new_callable=AsyncMock) as mock_fetchrow:
         
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_fetch.return_value = InstitutionFactory(status="ACTIVE")
@@ -202,9 +202,9 @@ async def test_create_institution_user_success(async_client):
 @pytest.mark.asyncio
 async def test_list_institution_users_success(async_client):
     """Test that the list of users for an institution is retrieved successfully."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.fetch_institution', new_callable=AsyncMock) as mock_fetch, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.conn.fetch', new_callable=AsyncMock) as mock_fetch_users:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.fetch_institution', new_callable=AsyncMock) as mock_fetch, \
+         patch('src.api.routes.institutions.InstitutionManager.conn.fetch', new_callable=AsyncMock) as mock_fetch_users:
         
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_fetch.return_value = InstitutionFactory(status="ACTIVE")
@@ -221,7 +221,7 @@ async def test_list_institution_users_success(async_client):
 @pytest.mark.asyncio
 async def test_rate_limiting(async_client):
     """Test that rate limiting is enforced on the list_institutions endpoint."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         # Perform 10 allowed requests
         for _ in range(10):
@@ -235,7 +235,7 @@ async def test_rate_limiting(async_client):
 @pytest.mark.asyncio
 async def test_create_institution_invalid_data(async_client):
     """Test that creating an institution with invalid data fails."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         invalid_institution_data = {
             "name": "",  # Missing name
@@ -267,7 +267,7 @@ async def test_unauthorized_access_invalid_token(async_client):
 @pytest.mark.asyncio
 async def test_unauthorized_access_non_admin_role(async_client):
     """Test that accessing endpoints with a non-admin JWT token is forbidden."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify:
         mock_verify.side_effect = HTTPException(status_code=403, detail="Insufficient permissions")
         headers = {"Authorization": "Bearer non_admin_jwt_token"}
         response = await async_client.get("/admin/institutions/", headers=headers)
@@ -314,8 +314,8 @@ async def test_create_institution_malformed_token(async_client):
 @pytest.mark.asyncio
 async def test_concurrent_create_institution(async_client):
     """Test creating institutions concurrently to detect race conditions."""
-    with patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
+    with patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.InstitutionManager.create_institution', new_callable=AsyncMock) as mock_create:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         # Simulate unique constraint violation on second concurrent request
         mock_create.side_effect = [
@@ -347,9 +347,9 @@ async def test_concurrent_create_institution(async_client):
 @pytest.mark.asyncio
 async def test_list_institutions_db_error(async_client, mock_db_pool):
     """Test handling of database errors when listing institutions."""
-    with patch('document_processing.src.api.routes.institutions.get_db_pool', return_value=mock_db_pool), \
-         patch('document_processing.src.api.routes.institutions.verify_admin_token') as mock_verify, \
-         patch('document_processing.src.api.routes.institutions.InstitutionManager.list_institutions') as mock_list:
+    with patch('src.api.routes.institutions.get_db_pool', return_value=mock_db_pool), \
+         patch('src.api.routes.institutions.verify_admin_token') as mock_verify, \
+         patch('src.api.routes.institutions.InstitutionManager.list_institutions') as mock_list:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         mock_list.side_effect = Exception("Database error")
         

@@ -7,6 +7,12 @@ from fastapi import HTTPException
 from enum import Enum
 from functools import wraps
 
+# ...existing code...
+
+from src.claims_processor.handlers import ClaimStatus, ClaimsProcessingError, DatabaseConnectionError, ClaimData, db_error_handler, ClaimHandler
+
+# ...existing code...
+
 logger = structlog.get_logger()
 
 class ClaimStatus(str, Enum):

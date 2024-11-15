@@ -17,6 +17,7 @@ import logging
 import uuid
 from pytz import UTC
 import aioredis  # Added import
+from src.api.routes import claims
 
 # Initialize logging with additional context
 logger = structlog.get_logger()

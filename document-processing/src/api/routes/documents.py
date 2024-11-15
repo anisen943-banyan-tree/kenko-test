@@ -5,7 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import structlog
-from document_processor import (
+from src.document_processor import (
     DocumentProcessor,
     DocumentType,
     VerificationStatus,

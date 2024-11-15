@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
-from document_processing.src.api.main import app
-from document_processing.src.api.limiter import FastAPILimiter, RateLimiter, get_remote_address
+from src.api.main import app
+from src.api.limiter import FastAPILimiter, RateLimiter, get_remote_address
 import aioredis
 
 @pytest.fixture(scope="module", autouse=True)

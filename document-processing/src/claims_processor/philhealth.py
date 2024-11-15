@@ -6,6 +6,7 @@ import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 from pydantic import BaseModel, ValidationError, Field
 import asyncpg  # Assuming asyncpg is used for async database operations
+from src.claims_processor.philhealth import MembershipStatus, PhilHealthBenefit, MembershipInfo, Claim, MembershipRetrievalError, BenefitCalculationError, PhilHealthService
 
 class MembershipStatus(str, Enum):
     ACTIVE = "Active"

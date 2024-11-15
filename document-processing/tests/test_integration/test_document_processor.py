@@ -5,7 +5,7 @@ import uuid
 
 # Local import since test file is in the same directory
 try:
-    from document_processing.src.document.document_processor import (
+    from src.document.document_processor import (
         DocumentProcessor,
         ProcessorConfig,
         DocumentMetadata,
@@ -17,13 +17,13 @@ except ImportError as e:
 
 # Ensure the import path for app is correct
 try:
-    from document_processing.src.api.main import app
+    from src.api.main import app
 except ImportError as e:
     raise ImportError("Ensure 'api.main' module is available in the project.") from e
 
 # Ensure the some_module is available in the project
 try:
-    from document_processing.src.claims_processor.processor import ProcessorConfig as ClaimsProcessorConfig
+    from src.claims_processor.processor import ProcessorConfig as ClaimsProcessorConfig
 except ImportError as e:
     raise ImportError("Ensure 'claims_processor.processor' module is available in the project.") from e
 
