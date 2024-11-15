@@ -1,37 +1,36 @@
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 import uuid
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Local import since test file is in the same directory
 try:
-    from document.document_processor import (
+    from document_processing.src.document.document_processor import (
         DocumentProcessor,
         ProcessorConfig,
         DocumentMetadata,
         DocumentType,
         VerificationStatus
     )
-except ImportError:
-    raise ImportError("Ensure 'document_processor' module is available in the project.")
+except ImportError as e:
+    raise ImportError("Ensure 'document_processor' module is available in the project.") from e
 
 # Ensure the import path for app is correct
-from document_processing.src.api.routes.documents import app
+try:
+    from document_processing.src.api.main import app
+except ImportError as e:
+    raise ImportError("Ensure 'api.main' module is available in the project.") from e
 
 # Ensure the some_module is available in the project
 try:
-    from claims_processor.processor import ProcessorConfig  # Ensure this import is correct
-except ImportError:
-    raise ImportError("Ensure 'claims_processor.processor' module is available in the project.")
-
-from document.models import DocumentMetadata
+    from document_processing.src.claims_processor.processor import ProcessorConfig as ClaimsProcessorConfig
+except ImportError as e:
+    raise ImportError("Ensure 'claims_processor.processor' module is available in the project.") from e
 
 @pytest.fixture
 async def processor_config():
     """Test configuration fixture."""
-    return ProcessorConfig(
+    return ClaimsProcessorConfig(
         document_bucket="test-bucket",
         confidence_threshold=0.8,
         batch_size=5,
@@ -46,7 +45,8 @@ async def mock_pool():
     """Mock database pool fixture."""
     pool = AsyncMock()
     pool.acquire.return_value.__aenter__.return_value = AsyncMock()
-    return pool
+    yield pool
+    await pool.close()  # Ensure the pool is properly closed
 
 @pytest.fixture
 async def document_processor(mock_pool, processor_config):
