@@ -3,7 +3,6 @@ airtable-python-wrapper>=0.15.0
 pydantic>=2.0.0
 python-dotenv>=1.0.0
 fastapi>=0.68.0
-fastapi-cache==0.1.0
 asyncpg[pool]>=0.29.0
 httpx>=0.18.0
 PyJWT>=2.1.0
@@ -16,3 +15,12 @@ structlog>=21.1.0
 slowapi>=0.1.4
 fastapi_limiter>=0.1.0
 pytz>=2023.3
+factory_boy
+sqlalchemy
+pydantic[email]
+python-multipart>=0.0.5
+# aioredis>=2.0.0
+redis>=4.0.0
+fastapi-cache2>=0.2.0  # Ensure this line is present
+pendulum>=2.1.2
+setuptools

@@ -6,6 +6,12 @@ env:
   POSTGRES_USER: claimsuser
   POSTGRES_PASSWORD: ${{ secrets.RDS_PASSWORD }}  # Use the existing RDS_PASSWORD secret
   AWS_REGION: ap-south-1
+  JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+  DATABASE_DSN: ${{ secrets.DATABASE_DSN }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+  ENVIRONMENT: development
+  TEST_ENVIRONMENT: test
 
 on:
   push:
@@ -128,7 +134,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-test.txt
-          pip install asyncpg  # Explicitly install asyncpg
+          pip install asyncpg structlog pydantic-settings slowapi  # Explicitly install missing dependencies
 
       # Set up SSH agent and load the SSH key for tunnel access
       - name: Set up SSH key

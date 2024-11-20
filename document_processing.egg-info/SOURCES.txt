@@ -1,0 +1,7 @@
+LICENCE.txt
+README.md
+setup.py
+document_processing.egg-info/PKG-INFO
+document_processing.egg-info/SOURCES.txt
+document_processing.egg-info/dependency_links.txt
+document_processing.egg-info/top_level.txt
