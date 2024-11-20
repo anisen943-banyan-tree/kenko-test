@@ -94,11 +94,11 @@ jobs:
           mkdir -p reports/mypy
       - name: Check formatting
         run: |
-          black --check document-processing/src/ document-processing/tests/ --diff --color > reports/black.txt || echo "Black formatting issues found"
-          isort --check-only document-processing/src/ document-processing/tests/ --diff --color > reports/isort.txt || echo "Import sorting issues found"
+          black --check document_processing/src/ document_processing/tests/ --diff --color > reports/black.txt || echo "Black formatting issues found"
+          isort --check-only document_processing/src/ document_processing/tests/ --diff --color > reports/isort.txt || echo "Import sorting issues found"
       - name: Run pylint
         run: |
-          pylint document-processing/src/ document-processing/tests/ --output-format=colorized > reports/pylint.txt || true
+          pylint document_processing/src/ document_processing/tests/ --output-format=colorized > reports/pylint.txt || true
       - name: Upload code quality reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -153,10 +153,10 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@127.0.0.1:5433/${{ secrets.RDS_DB_NAME }}
-          PYTHONPATH: ${{ github.workspace }}/document-processing/src
+          PYTHONPATH: ${{ github.workspace }}/document_processing/src
         run: |
           mkdir -p reports/tests
-          python -m pytest document-processing/tests/ -v --cov=document-processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
+          python -m pytest document_processing/tests/ -v --cov=document_processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
 
       - name: Upload test results
         if: always()
