@@ -1,16 +1,15 @@
-# ...existing code...
-from redis.asyncio import Redis
-from fastapi_cache import FastAPICache
-from fastapi_cache.backends.inmemory import InMemoryBackend
-from fastapi import Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
 import uuid
+from src.config.settings import settings
+from src.api.routes import claims, documents, institutions
+from src.api.routes.documents import router as documents_router
+from src.app_factory import create_app
 
-# ...existing code...
-
-redis = Redis(...)
-
-# ...existing code...
+app = create_app()
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -31,10 +30,6 @@ async def add_request_id(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     return response
 
-@app.on_event("startup")
-async def on_startup():
-    FastAPICache.init(InMemoryBackend())
-
 @app.get("/health")
 async def health_check():
     try:
@@ -45,4 +40,11 @@ async def health_check():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
-# ...existing code...
+@app.get("/your-route", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def your_route():
+    # Your code here
+
+# Include your routers
+app.include_router(claims.router)
+app.include_router(documents_router, prefix="/api/v1/documents")
+app.include_router(institutions.router)

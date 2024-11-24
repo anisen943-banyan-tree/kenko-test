@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from fastapi import FastAPI
 from unittest.mock import patch, AsyncMock, Mock
@@ -65,7 +66,7 @@ async def setup_cache():
     await redis_client.close()
     await redis_client.wait_closed()
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_client():
     """Create async test client."""
     async with AsyncClient(app=app, base_url="http://test") as client:

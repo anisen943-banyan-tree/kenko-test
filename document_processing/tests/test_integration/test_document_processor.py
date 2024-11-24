@@ -17,7 +17,9 @@ import jwt
 import os
 import asyncpg  # Added import
 from src.api.models import DocumentCreate, DocumentUpdate  # Adjusted import
-from src.main import app  # Updated import
+from src.app_factory import create_app  # Updated import
+
+app = create_app()
 
 try:
     from pydantic_settings import BaseSettings  # Updated import
@@ -35,12 +37,6 @@ try:
     )
 except ImportError as e:
     raise ImportError("Ensure 'document_processor' module is available in the project.") from e
-
-# Ensure the import path for app is correct
-try:
-    from src.main import app
-except ImportError as e:
-    raise ImportError("Ensure 'api.main' module is available in the project.") from e
 
 from fastapi_limiter.depends import RateLimiter
 
@@ -68,11 +64,18 @@ async def processor_config():
 
 from unittest.mock import MagicMock
 
-@pytest.fixture
+import pytest_asyncio
+
+@pytest_asyncio.fixture
+async def test_client():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
+
+@pytest_asyncio.fixture
 async def document_processor(processor_config):
     """Fixture for document processor."""
     processor = MagicMock(DocumentProcessor)
-    processor.create_version = AsyncMock(return_value="version-id")
+    processor.create_version = AsyncMock(return_value="mock-version-id")
     yield processor
 
 @pytest.fixture(scope="session", autouse=True)
@@ -103,13 +106,14 @@ class TestDocumentVersioning:
         
         # Verify
         assert version_id is not None, "Version ID should not be None"
+        assert version_id == "mock-version-id", "Version ID should match the mocked return value"
 
 app.dependency_overrides[RateLimiter] = lambda: RateLimiter(times=5, seconds=60)
 
 from unittest.mock import patch
 
 @patch("redis.StrictRedis")
-def test_redis_mock(redis_mock):
+async def test_redis_mock(redis_mock):
     redis_instance = redis_mock.return_value
     redis_instance.get.return_value = "mocked_value"
-    assert redis_instance.get("key") == "mocked_value"
+    assert await redis_instance.get("key") == "mocked_value"

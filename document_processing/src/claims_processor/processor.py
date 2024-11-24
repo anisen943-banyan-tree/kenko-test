@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Union, Tuple, Any, TypedDict
 from dataclasses import dataclass, field
 import time
 from prometheus_client import Summary
+from pydantic import Field
 
 # Type definitions - single source of truth
 class DocumentVersion(TypedDict):
@@ -115,6 +116,9 @@ class DocumentProcessor:
     @classmethod
     async def create(cls, dsn: str, config: ProcessorConfig) -> 'DocumentProcessor':
         """Create processor with optimized connection pool and initialization."""
+        if not isinstance(config.idle_timeout, (int, float)):
+            raise ValueError("idle_timeout must be a number")
+        
         pool = await asyncpg.create_pool(
             dsn,
             min_size=config.min_connections,
@@ -146,74 +150,13 @@ class DocumentProcessor:
                     claim_id VARCHAR(50) NOT NULL,
                     document_type VARCHAR(50) NOT NULL,
                     upload_timestamp TIMESTAMPTZ NOT NULL,
-                    storage_path TEXT NOT NULL,
-                    verification_status VARCHAR(20) NOT NULL,
-                    verified_by VARCHAR(50),
-                    verification_notes TEXT,
-                    textract_results JSONB,
-                    metadata JSONB DEFAULT '{}',
-                    processing_stats JSONB DEFAULT '{}',
-                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                    last_processed_at TIMESTAMPTZ,
-                    CONSTRAINT valid_status CHECK (
-                        verification_status IN (
-                            'Pending', 'Processing', 'Verified', 
-                            'Rejected', 'Archived'
-                        )
-                    )
-                ) PARTITION BY RANGE (upload_timestamp);
-
-                CREATE TABLE IF NOT EXISTS document_versions (
-                    version_id UUID PRIMARY KEY,
-                    document_id BIGINT NOT NULL,
-                    storage_path TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL,
-                    changes JSONB NOT NULL,
-                    FOREIGN KEY (document_id) REFERENCES documents(document_id)
+                    storage_path TEXT NOT NULL
                 );
-
-                -- Enhanced indexes for common query patterns
-                CREATE INDEX IF NOT EXISTS idx_documents_status_timestamp 
-                    ON documents(verification_status, upload_timestamp DESC)
-                    INCLUDE (claim_id, document_type);
-                    
-                CREATE INDEX IF NOT EXISTS idx_documents_claim_type 
-                    ON documents(claim_id, document_type)
-                    INCLUDE (verification_status);
-                    
-                CREATE INDEX IF NOT EXISTS idx_documents_textract 
-                    ON documents USING GIN (textract_results)
-                    WHERE verification_status != 'Archived';
-
-                -- Trigger for updated_at and stats tracking
-                CREATE OR REPLACE FUNCTION update_document_stats()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    NEW.updated_at = CURRENT_TIMESTAMP;
-                    NEW.processing_stats = jsonb_set(
-                        COALESCE(NEW.processing_stats, '{}'::jsonb),
-                        '{last_modified}',
-                        to_jsonb(CURRENT_TIMESTAMP)
-                    );
-                    RETURN NEW;
-                END;
-                $$ LANGUAGE plpgsql;
-
-                DROP TRIGGER IF EXISTS documents_stats_update ON documents;
-                CREATE TRIGGER documents_stats_update
-                    BEFORE UPDATE ON documents
-                    FOR EACH ROW
-                    EXECUTE FUNCTION update_document_stats();
             """)
 
     async def _ensure_current_partitions(self):
         """Ensure partitions exist for recent and upcoming periods."""
-        current_year = datetime.now().year
-        years_to_create = range(current_year - 1, current_year + 2)
-
-        async with self._partition_lock:
-            await asyncio.gather(*[self._create_partition(year) for year in years_to_create])
+        pass  # Add logic here
 
     async def _create_partition(self, year: int):
         """Create a partition for a specific year if it doesn't exist."""
@@ -1081,6 +1024,20 @@ class ClaimsProcessor:
             self.logger.error("Error processing claim.", claim_id=claims_data.get("id"), error=str(e))
             raise
 
+def validate_partition_key(institution_id):
+    if not is_valid_partition_key(institution_id):
+        raise ValueError("Invalid partition key")
+
+def cleanup_institution_data(institution_id):
+    truncate_partition(institution_id)
+
+async def process_cross_partition_operations():
+    async with transaction_scope(isolation="REPEATABLE READ"):
+        # ...existing code...
+        pass
+def truncate_partition(partition_name):
+    execute_sql(f"TRUNCATE TABLE {partition_name}")
+
 PROCESS_TIME = Summary("batch_process_time", "Time spent processing a batch")
 
 @PROCESS_TIME.time()
@@ -1102,11 +1059,10 @@ async def process_batches(queue):
             break
         await process_batch(batch)
 
-queue = asyncio.Queue()
-asyncio.create_task(process_batches(queue))
+def main():
+    queue = asyncio.Queue()
+    asyncio.create_task(process_batches(queue))
+    asyncio.run(process_batches(queue))
 
-async def process_claim_batch(pool, claims):
-    async with pool.acquire() as connection:
-        async with connection.transaction():
-            for claim in claims:
-                await process_claim(connection, claim)
+if __name__ == "__main__":
+    main()

@@ -1,10 +1,12 @@
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 import os
 import asyncpg
 import redis
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
 
 # Create SQLAlchemy base class
 Base = declarative_base()
@@ -28,12 +30,16 @@ def init_models():
     Base.metadata.create_all(bind=engine)
 
 # Create asyncpg pool
-pool = await asyncpg.create_pool(
-    dsn="your_dsn",
-    min_size=5,
-    max_size=50,
-    max_inactive_connection_lifetime=300
-)
+pool = None
+
+async def init_db_pool():
+    global pool
+    pool = await asyncpg.create_pool(
+        dsn="your_dsn",
+        min_size=5,
+        max_size=50,
+        max_inactive_connection_lifetime=300
+    )
 
 # Create Redis cache
 cache = redis.StrictRedis(host="localhost", port=6379, db=0)
@@ -44,3 +50,12 @@ def get_cached_query_result(key: str, query: str, db):
         result = db.execute(query)
         cache.setex(key, 300, result)
     return result
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db_pool()
+    yield
+    if pool:
+        await pool.close()
+
+app = FastAPI(lifespan=lifespan)

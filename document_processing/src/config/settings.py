@@ -4,23 +4,27 @@ from pydantic import ConfigDict
 from pydantic import Field
 import os
 import logging
-import boto3
 import json_log_formatter
 
 class Settings(BaseSettings):
     jwt_secret_key: str = Field(default="default_secret_key", alias="JWT_SECRET_KEY")
-    database_dsn: str = os.getenv("DATABASE_DSN", os.getenv("DATABASE_URL", "default_dsn"))
-    database_url: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/dbname")
-    environment: str = os.getenv("ENVIRONMENT", "development").lower()
+    database_dsn: str = Field(default="sqlite:///:memory:", alias="DATABASE_DSN")  # Fallback to SQLite for tests
+    database_url: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql://claimsuser:Claims2024#Secure!@localhost/claimsdb_test"
+    )
+    environment: str = Field(default="production", alias="ENVIRONMENT")
     test_database_url: str = os.getenv("TEST_DATABASE_URL", "postgresql://test_user:test_password@localhost/test_dbname")
     test_environment: str = os.getenv("TEST_ENVIRONMENT", "test").lower()
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "your_default_value")
-    airtable_api_key: str = boto3.client('secretsmanager', region_name=os.getenv("AWS_REGION")).get_secret_value(SecretId="AirtableApiKey")['SecretString']
-
     # Add this property to provide uppercase compatibility
     @property
     def JWT_SECRET_KEY(self) -> str:
         return self.jwt_secret_key
+
+    @property
+    def is_test_env(self):
+        return self.environment == "test"
 
     model_config = ConfigDict(case_sensitive=True, extra="allow", env_nested_delimiter="__")
 

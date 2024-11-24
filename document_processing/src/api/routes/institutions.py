@@ -16,6 +16,8 @@ from src.config.settings import settings
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 from fastapi_cache.backends.redis import RedisBackend
+from unittest.mock import AsyncMock
+import pytest
 
 # Load environment variables
 load_dotenv()
@@ -190,6 +192,16 @@ async def get_db_pool() -> asyncpg.Pool:
         logger.error("Database pool error", error=str(e))
         raise HTTPException(status_code=500, detail="Database connection error")
 
+def truncate_partition(partition_name):
+    execute_sql(f"TRUNCATE TABLE {partition_name}")
+
+def delete_institution(institution_id):
+    execute_sql(f"DELETE FROM institutions WHERE id = {institution_id} CASCADE")
+
+async def handle_institution_operation():
+    async with transaction_scope():
+        perform_operation()
+
 @router.get("/", response_model=List[Institution])
 @limiter.limit("5/minute")
 @cache(namespace=CACHE_NAMESPACE, expire=300)  # Cache for 5 minutes
@@ -242,3 +254,8 @@ async def update_institution(
     except Exception as e:
         logger.error("Failed to update institution", error=str(e))
         raise HTTPException(status_code=500, detail="Error updating institution")
+
+@pytest.fixture(autouse=True)
+async def mock_dependencies():
+    app.state.pool = AsyncMock()  # Mock database pool
+    yield

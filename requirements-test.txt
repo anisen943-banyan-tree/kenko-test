@@ -18,7 +18,7 @@ aiohttp>=3.8.0
 httpx
 
 # Airtable API integration
-airtable-python-wrapper>=0.15.0
+# airtable-python-wrapper>=0.15.0
 
 # Core FastAPI and Pydantic requirements
 fastapi>=0.68.0
@@ -49,3 +49,5 @@ factory_boy
 
 redis>=4.0.0
 setuptools
+
+json-log-formatter>=1.1

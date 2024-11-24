@@ -11,3 +11,6 @@ python-multipart>=0.0.5
 redis>=4.0.0
 factory_boy
 setuptools
+json-log-formatter>=1.1
+prometheus-client>=0.16.0
+# airtable-python-wrapper>=0.15.0

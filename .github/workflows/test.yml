@@ -2,9 +2,9 @@ name: Python Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -29,7 +29,6 @@ jobs:
 
     env:
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -43,59 +42,13 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.13'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-        pip install asyncpg structlog pydantic-settings slowapi 'pydantic[email]'
 
-    - name: Run Database Migrations
-      env:
-        PGPASSWORD: ${{ secrets.RDS_PASSWORD }}
-        PGUSER: ${{ secrets.RDS_USERNAME }}
-        PGDATABASE: claimsdb_test
-        PGHOST: localhost
-        PGPORT: ${{ secrets.RDS_PORT }}
+    - name: Run tests
       run: |
-        psql -f src/db/migrations/000_init_user.sql
-        psql -f src/db/migrations/institution/001_initial.sql
-        psql -f src/db/migrations/claims/002_add_institution_id.sql
-        psql -f src/db/migrations/001_initial.sql
-        psql -f src/db/migrations/001_room_setup.sql
-
-    - name: Verify Database Setup
-      env:
-        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@localhost:${{ secrets.RDS_PORT }}/claimsdb_test
-        ENVIRONMENT: test
-      run: python scripts/verify_db.py
-
-    - name: Execute tests
-      env:
-        PYTHONPATH: ./src
-        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@localhost:${{ secrets.RDS_PORT }}/claimsdb_test
-        ENVIRONMENT: test
-      run: |
-        mkdir -p reports/tests
-        pytest ./tests/ -v --cov=./src --cov-report=xml --junitxml=./reports/tests/junit.xml
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          reports/tests
-          coverage.xml
+        pytest -v

@@ -1,10 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
-from src.main import app
+from src.app_factory import create_app  # Updated import
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from unittest.mock import AsyncMock
 
+from src.app_factory import create_app
+from fastapi.testclient import TestClient
+
+app = create_app()
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
@@ -16,6 +20,7 @@ async def setup_cache():
 
 @pytest.mark.asyncio
 async def test_cache_initialization():
+    FastAPICache.init(InMemoryBackend())  # Ensure initialization
     await FastAPICache.clear()  # Add `await` to clear cache
     assert FastAPICache.get_backend() is not None
 

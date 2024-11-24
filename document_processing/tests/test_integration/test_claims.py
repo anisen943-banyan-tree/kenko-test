@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 import asyncio
 import os
 from httpx import AsyncClient
@@ -22,6 +23,10 @@ TEST_DB_CONFIG = {
     "password": os.getenv("RDS_PASSWORD", "default_password")
 }
 
+from src.app_factory import create_app  # Corrected import path
+
+app = create_app()
+
 @pytest.fixture
 async def db_pool():
     """Create and clean test database"""
@@ -31,10 +36,9 @@ async def db_pool():
     yield pool
     await pool.close()
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_client():
     """Create test client for FastAPI app."""
-    from src.main import app  # Corrected import path
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
@@ -91,6 +95,7 @@ async def test_claim_amount_validation(test_client: AsyncClient, amount: float, 
     response = await test_client.post("/create_claim", json=claim_data)
     assert response.status_code == expected_status, f"Unexpected status code for amount {amount}"
 
+@pytest.mark.asyncio
 async def test_claim_creation(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test creation of a new claim."""
     logger.info("Testing claim creation with data: %s", sample_claim_data)
@@ -101,6 +106,7 @@ async def test_claim_creation(test_client: AsyncClient, db_pool, sample_claim_da
     assert "claim_id" in response_data, "Response should contain 'claim_id'"
     assert response_data.get("claim_id"), "Claim ID should be returned in response"
 
+@pytest.mark.asyncio
 async def test_claim_retrieval(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test retrieval of a claim."""
     logger.info("Testing claim retrieval")
@@ -113,6 +119,7 @@ async def test_claim_retrieval(test_client: AsyncClient, db_pool, sample_claim_d
     response_data = response.json()
     assert response_data.get("claim_id") == claim_id, "Claim ID mismatch in retrieval"
 
+@pytest.mark.asyncio
 async def test_claim_update_status(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test updating the status of a claim."""
     logger.info("Testing claim status update")
@@ -126,8 +133,7 @@ async def test_claim_update_status(test_client: AsyncClient, db_pool, sample_cla
     response_data = response.json()
     assert response_data.get("status") == "PROCESSING", "Claim status mismatch after update"
 
-# Additional tests for enhanced coverage
-
+@pytest.mark.asyncio
 async def test_invalid_claim_type(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test creation of a claim with an invalid claim type."""
     logger.info("Testing claim creation with invalid claim type")
@@ -136,6 +142,7 @@ async def test_invalid_claim_type(test_client: AsyncClient, db_pool, sample_clai
     response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     assert response.status_code == 400, f"Expected status 400 for invalid claim type, but got {response.status_code}"
 
+@pytest.mark.asyncio
 async def test_future_admission_date(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test creation of a claim with a future admission date."""
     logger.info("Testing claim creation with future admission date")
@@ -144,6 +151,7 @@ async def test_future_admission_date(test_client: AsyncClient, db_pool, sample_c
     response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     assert response.status_code == 400, f"Expected status 400 for future admission date, but got {response.status_code}"
 
+@pytest.mark.asyncio
 async def test_unauthorized_claim_creation(test_client: AsyncClient, sample_claim_data: Dict[str, Any]):
     """Test unauthorized claim creation."""
     logger.info("Testing unauthorized claim creation")
@@ -152,10 +160,9 @@ async def test_unauthorized_claim_creation(test_client: AsyncClient, sample_clai
 
 # Example test case
 @pytest.mark.asyncio
-async def test_example(mock_async_client, test_token):
-    # Use the mocked async client
-    response = await mock_async_client.get(
-        "/some-endpoint", headers={"Authorization": f"Bearer {test_token}"}
+async def test_example(test_client, test_token):
+    response = await test_client.get(
+        "/some-endpoint", 
+        headers={"Authorization": f"Bearer {test_token}"}
     )
-    await response  # Ensure the response is awaited
-    assert response.status_code == 200  # Expect success
+    assert response.status_code == 200

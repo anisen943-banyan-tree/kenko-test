@@ -50,6 +50,8 @@ class DocumentCreate(BaseModel):
     claim_id: str = Field(..., json_schema_extra={"example": "CLAIM123"})
     document_type: DocumentType = Field(..., json_schema_extra={"example": "DischargeNote"})
     storage_path: str = Field(..., json_schema_extra={"example": "/path/to/document"})
+    field1: str = Field(..., json_schema_extra={"example": "Sample value"})
+    field2: int = Field(..., json_schema_extra={"example": 123})
 
 class DocumentUpdate(BaseModel):
     verification_status: Optional[str]

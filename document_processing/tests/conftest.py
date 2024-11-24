@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 from src.config.settings import Settings  # Updated import path
 settings = Settings()
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def set_env_vars():
     # Update the JWT_SECRET_KEY to use the lowercase "jwt_secret_key" attribute
     os.environ['JWT_SECRET_KEY'] = settings.jwt_secret_key
@@ -32,8 +32,32 @@ def set_env_vars():
     logger.info("Test environment variables set.")
 
 @pytest.fixture(scope="session")
+def setup_session_env():
+    import os
+    os.environ["TEST_ENV"] = "true"
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    os.environ["API_KEY"] = "test-key"
+    yield
+    os.environ.pop("TEST_ENV")
+    os.environ.pop("DATABASE_URL")
+    os.environ.pop("API_KEY")
+
+@pytest.fixture(scope="function")
+def setup_test_env():
+    import os
+    os.environ["TEST_ENV"] = "true"
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    os.environ["API_KEY"] = "test-key"
+    print("Test environment variables set.")
+    yield
+    print("Tearing down test environment.")
+    os.environ.pop("TEST_ENV")
+    os.environ.pop("DATABASE_URL")
+    os.environ.pop("API_KEY")
+
+@pytest.fixture(scope="function")
 async def db_pool():
-    """Create a session-scoped database pool."""
+    """Create a function-scoped database pool."""
     pool = await asyncpg.create_pool(
         dsn=settings.database_url,
         min_size=1,
@@ -74,11 +98,10 @@ def event_loop():
     yield loop
     loop.close()
 
-# Update initialize_app to use session-scoped event_loop
-@pytest.fixture(scope="session")
+# Update initialize_app to use function-scoped event_loop
+@pytest.fixture(scope="function")
 async def initialize_app(event_loop, db_pool):
     """Initialize the FastAPI app with proper event loop and db_pool."""
-    from src.main import app
     from src.document.document_processor import ProcessorConfig
 
     # Create ProcessorConfig instance
@@ -96,28 +119,28 @@ async def initialize_app(event_loop, db_pool):
 async def test_client(initialize_app):
     """Create test client for FastAPI app."""
     from httpx import AsyncClient
-    async with AsyncClient(app=initialize_app, base_url="http://test") as ac:
+    async with AsyncClient(app=initialize_app, base_url="http://testserver") as ac:
         yield ac
 
 @pytest.fixture
 async def async_client():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    from httpx import AsyncClient
+    async with AsyncClient(app=app, base_url="http://testserver") as client:
         yield client
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import jwt
 
 @pytest.fixture
 def test_token():
     """Generate test JWT token."""
-    import jwt
-    from datetime import datetime, timedelta
-    
     payload = {
         "user_id": "test_user",
         "role": "admin",
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
+        "exp": datetime.utcnow() + timedelta(days=1)
     }
-    return jwt.encode(payload, os.getenv('JWT_SECRET_KEY'), algorithm="HS256")
+    secret = os.getenv('JWT_SECRET_KEY')  # Use the JWT secret from environment variables
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 @pytest.fixture
 def mock_settings(mocker):
@@ -126,15 +149,18 @@ def mock_settings(mocker):
     return settings
 
 @pytest.fixture(autouse=True)
+async def cleanup_lambda_artifacts():
+    yield
+    await delete_processing_artifacts()  # Mock or define this cleanup logic.
+
+@pytest.fixture(autouse=True)
 async def cleanup_database():
-    """Clean up after each test."""
     yield
     # Perform any necessary cleanup here
     # Since we're rolling back transactions, the database should be clean
     # For other resources like files or caches, add cleanup code here
 
 import pytest
-from src.main import app
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -176,8 +202,107 @@ from httpx import AsyncClient
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 
+from src.app_factory import create_app
+from src.document.document_processor import DocumentProcessor
+from unittest.mock import AsyncMock
+
 @pytest.fixture
-async def test_client(app):
-    FastAPICache.init(RedisBackend(redis.StrictRedis(host="localhost")), prefix="test-cache")
+async def test_client():
+    # Create app instance
+    app = create_app()
+
+    # Mock and initialize app state
+    app.state.document_processor = AsyncMock(spec=DocumentProcessor)
+
+    # Use test client
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
+
+@pytest.fixture(scope="function", autouse=True)
+async def cleanup_test_partitions(db_pool):
+    async with db_pool.acquire() as conn:
+        await conn.execute("TRUNCATE TABLE test_partition CASCADE")
+
+@pytest.fixture
+async def create_test_partition():
+    institution_id = generate_unique_institution_id()
+    await create_partition(institution_id)
+    return institution_id
+
+async def create_partition(partition_name):
+    async with db_pool.acquire() as conn:
+        await conn.execute(f"CREATE TABLE IF NOT EXISTS {partition_name}")
+
+async def create_institution_partition(institution_id):
+    await create_partition(f"institution_{institution_id}")
+
+@pytest.fixture
+async def cleanup_test_partitions():
+    await drop_all_test_partitions()
+
+async def drop_all_test_partitions():
+    async with db_pool.acquire() as conn:
+        await conn.execute("DROP TABLE IF EXISTS test_partition CASCADE")
+
+@pytest.fixture
+async def create_partition(db_pool):
+    """
+    Create a database partition if it does not already exist.
+    """
+    async with db_pool.acquire() as conn:
+        partition_key = "test_partition"
+        await conn.execute(f"""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = '{partition_key}') THEN
+                    CREATE TABLE partition_{partition_key} PARTITION OF your_partitioned_table FOR VALUES IN ('{partition_key}');
+                END IF;
+            END $$;
+        """)
+
+@pytest.fixture
+async def manage_partition_transaction(db_pool):
+    """
+    Manage partition creation and operations within a transaction.
+    """
+    async with db_pool.acquire() as conn:
+        transaction = conn.transaction()
+        await transaction.start()
+        try:
+            await conn.execute("CREATE TABLE IF NOT EXISTS partition_test (...)")
+            yield
+            await transaction.commit()
+        except Exception as e:
+            await transaction.rollback()
+            raise e
+
+@pytest.fixture(scope="function", autouse=True)
+async def cleanup_partitions(db_pool):
+    """
+    Clean up test partitions after each test function.
+    """
+    async with db_pool.acquire() as conn:
+        await conn.execute("TRUNCATE TABLE your_partitioned_table CASCADE")
+
+@pytest.fixture
+async def partition_test_data(db_pool):
+    """
+    Insert test data into the appropriate partition for testing.
+    """
+    async with db_pool.acquire() as conn:
+        partition_key = "test_partition"
+        await conn.execute(f"""
+            INSERT INTO partitioned_table (partition_key, other_column)
+            VALUES ('{partition_key}', 'test_data');
+        """)
+        yield partition_key
+        await conn.execute(f"""
+            DELETE FROM partitioned_table WHERE partition_key = '{partition_key}';
+        """)
+
+@pytest.fixture(autouse=True)
+async def setup_cache():
+    """Setup and teardown FastAPI Cache for tests."""
+    FastAPICache.init(InMemoryBackend())
+    yield
+    await FastAPICache.clear()

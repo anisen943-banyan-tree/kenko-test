@@ -1,5 +1,5 @@
 aiohttp>=3.8.0
-airtable-python-wrapper>=0.15.0
+# airtable-python-wrapper>=0.15.0
 pydantic>=2.0.0
 python-dotenv>=1.0.0
 fastapi>=0.68.0
@@ -24,3 +24,4 @@ redis>=4.0.0
 fastapi-cache2>=0.2.0  # Ensure this line is present
 pendulum>=2.1.2
 setuptools
+json-log-formatter>=1.1

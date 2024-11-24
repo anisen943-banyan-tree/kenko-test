@@ -19,6 +19,7 @@ from pytz import UTC
 from redis.asyncio import Redis  # Use redis-py instead of aioredis
 from src.api.routes import claims
 from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock
 
 # Initialize logging with additional context
 logger = structlog.get_logger()
@@ -159,7 +160,6 @@ async def common_parameters(q: Optional[str] = None, skip: int = 0, limit: int =
                dependencies=[Depends(RateLimiter(times=5, seconds=60))],
                summary="Create a new claim",
                description="Create a claim with the specified details and documents.")
-@FastAPILimiter.times(10, seconds=60)
 async def create_claim(
     request: Request,
     claim_request: ClaimRequest,

@@ -4,6 +4,12 @@ import os
 import pytest
 from src.config.settings import Settings
 
+@pytest.fixture(autouse=True)
+def override_env_vars(monkeypatch):
+    monkeypatch.setenv("JWT_SECRET_KEY", "test_jwt_secret_key")
+    monkeypatch.setenv("DATABASE_DSN", "test_database_dsn")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test_user:test_password@localhost/test_db")
+
 @pytest.fixture
 def override_settings(monkeypatch):
     # Apply monkeypatch for environment variables

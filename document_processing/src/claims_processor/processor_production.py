@@ -28,7 +28,6 @@ class ClaimErrorCategory(Enum):
     TRANSLATION = "translation"
     CACHE = "cache"
     REDIS = "redis"
-    AIRTABLE = "airtable"
     PHILHEALTH = "philhealth"
     PROCESSING = "processing"
     UNKNOWN = "unknown"
