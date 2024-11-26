@@ -138,20 +138,30 @@ def admin_headers(admin_token):
     """Create headers with admin JWT token."""
     return {"Authorization": f"Bearer {admin_token}"}
 
+@pytest.fixture
+def test_token():
+    """Generate a valid test JWT token."""
+    return generate_jwt_token(user_id=1, role="TEST")
+
+@pytest.fixture
+def test_headers(test_token):
+    """Create headers with test JWT token."""
+    return {"Authorization": f"Bearer {test_token}"}
+
 @pytest.mark.asyncio
-async def test_list_institutions_success(async_client, mock_db_pool):
+async def test_list_institutions_success(async_client, mock_db_pool, mock_role_check, test_headers):
     """Test successful listing of institutions with caching."""
     test_data = get_mock_institutions()
     with patch('src.api.routes.institutions.get_db_pool', return_value=mock_db_pool), \
          patch('src.api.routes.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         with patch.object(InstitutionManager, 'list_institutions', new_callable=AsyncMock, return_value=test_data):
-            response = await async_client.get("/admin/institutions/")
+            response = await async_client.get("/admin/institutions/", headers=test_headers)
             assert response.status_code == 200
             assert response.json() == test_data
 
 @pytest.mark.asyncio
-async def test_create_institution_invalidates_cache(async_client, mock_db_pool):
+async def test_create_institution_invalidates_cache(async_client, mock_db_pool, mock_role_check, test_headers):
     """Test that creating a new institution invalidates the cache."""
     test_data = {
         "name": "New Institution",
@@ -163,29 +173,29 @@ async def test_create_institution_invalidates_cache(async_client, mock_db_pool):
     with patch.object(InstitutionManager, 'create_institution', new_callable=AsyncMock) as mock_create:
         mock_create.return_value = {**test_data, "id": 1, "status": "ACTIVE"}
         with patch('fastapi_cache.FastAPICache.clear') as mock_cache_clear:
-            response = await async_client.post("/admin/institutions/", json=test_data)
+            response = await async_client.post("/admin/institutions/", json=test_data, headers=test_headers)
             assert response.status_code == 200
             assert response.json()["name"] == test_data["name"]
             mock_cache_clear.assert_called_once_with(namespace="institutions")
 
 @pytest.mark.asyncio
-async def test_rate_limit_disabled_in_test(async_client, mock_db_pool):
+async def test_rate_limit_disabled_in_test(async_client, mock_db_pool, mock_role_check, test_headers):
     """Verify rate limiter is disabled in test environment."""
     app.state.limiter.enabled = False  # Ensure limiter is disabled
     with patch('src.api.routes.institutions.get_db_pool', return_value=mock_db_pool):
         for _ in range(10):
-            response = await async_client.get("/admin/institutions/")
+            response = await async_client.get("/admin/institutions/", headers=test_headers)
             assert response.status_code == 200
 
 @pytest.mark.asyncio
-async def test_unauthorized_access(async_client):
+async def test_unauthorized_access(async_client, mock_role_check):
     """Test unauthorized access handling."""
     response = await async_client.get("/admin/institutions/")
     assert response.status_code == 403
     assert "Not authenticated" in response.json()["detail"]
 
 @pytest.mark.asyncio
-async def test_invalid_token(async_client):
+async def test_invalid_token(async_client, mock_role_check):
     """Test invalid token handling."""
     headers = {"Authorization": "Bearer invalid_token"}
     response = await async_client.get("/admin/institutions/", headers=headers)
@@ -193,7 +203,7 @@ async def test_invalid_token(async_client):
     assert "Invalid token" in response.json()["detail"]
 
 @pytest.mark.asyncio
-async def test_non_admin_access(async_client, mock_db_pool):
+async def test_non_admin_access(async_client, mock_db_pool, mock_role_check):
     """Test non-admin access handling."""
     token = jwt.encode(
         {"user_id": 1, "role": "USER"},

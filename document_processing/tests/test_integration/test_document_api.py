@@ -1,40 +1,41 @@
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
-from fastapi import FastAPI, HTTPException
-from unittest.mock import patch, AsyncMock, MagicMock
-from src.document import document_processor
-from src.api.routes import documents  # Adjusted import
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from fastapi.middleware.cors import CORSMiddleware
-from asyncpg import UniqueViolationError
-from factory import Factory, Faker, SubFactory
-from factory.alchemy import SQLAlchemyModelFactory
-from datetime import datetime, timedelta
-import jwt
-import os
 import asyncio
-import asyncpg  # Added import
-from src.api.models import DocumentCreate, DocumentUpdate
-from src.app_factory import create_app  # Updated import
-
-app = create_app()
+import logging
+from datetime import datetime, timedelta
+from unittest.mock import patch, AsyncMock, MagicMock
 
 try:
     from pydantic_settings import BaseSettings  # Updated import
 except ImportError:
     raise ImportError("Ensure 'pydantic_settings' module is installed.")
 
+from httpx import AsyncClient
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from fastapi.middleware.cors import CORSMiddleware
+from asyncpg import UniqueViolationError
+from factory import Factory, Faker, SubFactory
+from factory.alchemy import SQLAlchemyModelFactory
+import jwt
+import os
 from redis.asyncio import Redis
 from fastapi_limiter.depends import RateLimiter
+
+from src.document import document_processor
+from src.api.routes import documents  # Adjusted import
+from src.api.models import DocumentCreate, DocumentUpdate
+from src.app_factory import create_app  # Updated import
+
+app = create_app()
 
 app.include_router(documents.router, prefix="/api/v1/documents")  # Ensure the route is registered
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_limiter():
     from fastapi_limiter import FastAPILimiter
-    from redis.asyncio import Redis
     redis = Redis(host="localhost", port=6379, decode_responses=True)
     await FastAPILimiter.init(redis)
     yield
@@ -44,13 +45,13 @@ async def setup_limiter():
 async def setup_rate_limiter():
     try:
         redis = Redis(host='localhost', port=6379, decode_responses=True)
-        await FastAPILimiter.init(redis, key_func=get_remote_address)
+        from fastapi_limiter import FastAPILimiter  # Ensure FastAPILimiter is imported
+        await FastAPILimiter.init(redis)  # Ensure FastAPILimiter is initialized correctly
         yield
     except Exception as e:
         pytest.fail(f"Failed to connect to Redis: {e}")
     finally:
-        redis.close()
-        await redis.wait_closed()
+        await redis.close()  # Correct usage
 
 @pytest.fixture
 def mock_document_id():
@@ -64,9 +65,6 @@ class BaseTestCase:
             self.client = client
             yield
 
-from fastapi.testclient import TestClient
-
-import logging
 # Add logging configuration
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -81,11 +79,14 @@ async def mock_dependencies():
     app.state.pool = AsyncMock()  # Mock database pool
     yield
 
-@pytest.mark.asyncio
+async def process_document(document_id: str):
+    """Mock implementation for testing"""
+    return {"status": "processed", "document_id": document_id}
+
 class TestDocumentAPI(BaseTestCase):
-    # Remove the old test_client fixture definition
     # ...existing code...
 
+    @pytest.mark.asyncio
     async def test_upload_document(self, test_client, test_token):
         url = "/api/v1/documents/upload"  # Updated route
         logger.debug(f"Testing upload endpoint: {url}")
@@ -160,28 +161,23 @@ class TestDocumentAPI(BaseTestCase):
             assert response.status_code == 200, f"Health check failed: {response.text}"
             assert response.json() == {"status": "ok"}
 
-    # Add mock implementation of process_document
-    async def process_document(document_id: str):
-        """Mock implementation for testing"""
-        return {"status": "processed", "document_id": document_id}
-
-    @pytest.mark.asyncio
     @patch("src.document.document_processor.trigger_lambda_task")
-    async def test_lambda_service_mock(self, test_client, mock_trigger_lambda):
+    @pytest.mark.asyncio
+    async def test_lambda_service_mock(self, mock_trigger_lambda):
         mock_trigger_lambda.return_value = {"results": "mocked_data"}
         mock_trigger_lambda.side_effect = AsyncMock(return_value={"results": "mocked_data"})
         
-        response = await self.process_document("test_document_id")
+        response = await process_document("test_document_id")
         assert response == {"results": "mocked_data"}
         await mock_trigger_lambda.assert_called_once_with("test_document_id")
 
-    @pytest.mark.asyncio
     @patch("src.document.document_processor.trigger_lambda_task")
-    async def test_lambda_task_failure(self, test_client, mock_trigger_lambda):
+    @pytest.mark.asyncio
+    async def test_lambda_task_failure(self, mock_trigger_lambda):
         mock_trigger_lambda.side_effect = AsyncMock(side_effect=RuntimeError("Lambda task failed."))
         
         with pytest.raises(RuntimeError) as exc_info:
-            await self.process_document("test_document_id")
+            await process_document("test_document_id")
         assert str(exc_info.value) == "Lambda task failed."
 
     @pytest.fixture(autouse=True)
@@ -193,24 +189,98 @@ class TestDocumentAPI(BaseTestCase):
         if hasattr(document_processor, '_mock_data'):
             document_processor._mock_data = {}
 
-    # Add route validation helper
-    @staticmethod
-    async def validate_routes(client):
-        """Validate that all required routes are registered"""
-        routes = [
-            "/documents/upload",
-            "/documents/status/{document_id}",
-            "/documents/health"
-        ]
-        logger.debug("Validating routes...")
-        for route in routes:
-            response = await client.get(route.replace("{document_id}", "test"))
-            logger.debug(f"Route {route} status: {response.status_code}")
-            assert response.status_code != 404, f"Route {route} not found"
+    @pytest.mark.asyncio
+    async def test_complete_upload_workflow(self, test_client, test_token):
+        # Test full upload -> process -> status check flow
+        upload_url = "/api/v1/documents/upload"
+        status_url = "/api/v1/documents/status/{document_id}"
+        
+        # Upload document
+        response = await test_client.post(
+            upload_url,
+            headers={"Authorization": f"Bearer {test_token}"},
+            files={"file": ("test.pdf", b"test content", "application/pdf")}
+        )
+        assert response.status_code == 201
+        document_id = response.json()["document_id"]
+        
+        # Check status
+        response = await test_client.get(
+            status_url.format(document_id=document_id),
+            headers={"Authorization": f"Bearer {test_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] in ["Pending", "Completed", "Failed"]
 
     @pytest.mark.asyncio
-    async def test_route_validation(self, test_client):
-        await self.validate_routes(test_client)
+    async def test_database_persistence(self, test_client, test_token):
+        # Test actual database operations
+        upload_url = "/api/v1/documents/upload"
+        
+        # Upload document
+        response = await test_client.post(
+            upload_url,
+            headers={"Authorization": f"Bearer {test_token}"},
+            files={"file": ("test.pdf", b"test content", "application/pdf")}
+        )
+        assert response.status_code == 201
+        document_id = response.json()["document_id"]
+        
+        # Verify document in database (mocked)
+        document = await app.state.pool.fetchrow("SELECT * FROM documents WHERE id = $1", document_id)
+        assert document is not None
+        assert document["id"] == document_id
+
+    @pytest.mark.asyncio
+    async def test_lambda_integration(self, test_client):
+        # Test actual Lambda service interaction
+        with patch("src.document.document_processor.trigger_lambda_task") as mock_trigger_lambda:
+            mock_trigger_lambda.return_value = {"results": "mocked_data"}
+            response = await process_document("test_document_id")
+            assert response == {"results": "mocked_data"}
+            await mock_trigger_lambda.assert_called_once_with("test_document_id")
+
+    @pytest.mark.asyncio
+    async def test_multi_document_workflow(self, test_client, test_token):
+        # Test handling multiple documents
+        upload_url = "/api/v1/documents/upload"
+        status_url = "/api/v1/documents/status/{document_id}"
+        
+        document_ids = []
+        for i in range(3):
+            response = await test_client.post(
+                upload_url,
+                headers={"Authorization": f"Bearer {test_token}"},
+                files={"file": (f"test_{i}.pdf", b"test content", "application/pdf")}
+            )
+            assert response.status_code == 201
+            document_ids.append(response.json()["document_id"])
+        
+        for document_id in document_ids:
+            response = await test_client.get(
+                status_url.format(document_id=document_id),
+                headers={"Authorization": f"Bearer {test_token}"}
+            )
+            assert response.status_code == 200
+            assert response.json()["status"] in ["Pending", "Completed", "Failed"]
+
+# Add route validation helper
+async def validate_routes(client):
+    """Validate that all required routes are registered"""
+    routes = [
+        "/documents/upload",
+        "/documents/status/{document_id}",
+        "/documents/health"
+    ]
+    logger.debug("Validating routes...")
+    for route in routes:
+        response = await client.get(route.replace("{document_id}", "test"))
+        logger.debug(f"Route {route} status: {response.status_code}")
+        assert response.status_code != 404, f"Route {route} not found"
+
+@pytest.mark.asyncio
+async def test_route_validation(test_client):
+    await validate_routes(test_client)
 
 # Define allowed origins for testing
 origins = [

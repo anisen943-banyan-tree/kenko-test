@@ -1,3 +1,4 @@
+
 import pytest
 import pytest_asyncio
 import asyncio
@@ -81,7 +82,7 @@ async def mock_async_client():
     (None, 400)
 ])
 @pytest.mark.asyncio
-async def test_claim_amount_validation(test_client: AsyncClient, amount: float, expected_status: int):
+async def test_claim_amount_validation(test_client: AsyncClient, amount: float, expected_status: int, test_token: str):
     """Test validation of claim amount. Ensures that invalid amounts result in the appropriate HTTP status."""
     logger.info("Testing claim amount validation with amount: %s", amount)
     claim_data = {
@@ -93,14 +94,15 @@ async def test_claim_amount_validation(test_client: AsyncClient, amount: float, 
         "total_amount": amount,
         "documents": [{"id": "doc1", "type": "report"}]
     }
-    response = await test_client.post("/create_claim", json=claim_data)
+    headers = {"Authorization": f"Bearer {test_token}"}
+    response = await test_client.post("/create_claim", json=claim_data, headers=headers)
     assert response.status_code == expected_status, f"Unexpected status code for amount {amount}"
 
 @pytest.mark.asyncio
 async def test_claim_creation(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test creation of a new claim."""
     logger.info("Testing claim creation with data: %s", sample_claim_data)
-    headers = {"Authorization": f"Bearer {generate_test_token(user_id=1, role='ADMIN')}"}
+    headers = {"Authorization": f"Bearer {test_token}"}
     response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     assert response.status_code == 201, "Expected claim creation to return status 201"
     response_data = response.json()
@@ -111,7 +113,7 @@ async def test_claim_creation(test_client: AsyncClient, db_pool, sample_claim_da
 async def test_claim_retrieval(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test retrieval of a claim."""
     logger.info("Testing claim retrieval")
-    headers = {"Authorization": f"Bearer {generate_test_token(user_id=1, role='ADMIN')}"}
+    headers = {"Authorization": f"Bearer {test_token}"}
     create_response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     claim_id = create_response.json().get("claim_id")
     
@@ -124,7 +126,7 @@ async def test_claim_retrieval(test_client: AsyncClient, db_pool, sample_claim_d
 async def test_claim_update_status(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test updating the status of a claim."""
     logger.info("Testing claim status update")
-    headers = {"Authorization": f"Bearer {generate_test_token(user_id=1, role='ADMIN')}"}
+    headers = {"Authorization": f"Bearer {test_token}"}
     create_response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     claim_id = create_response.json().get("claim_id")
     
@@ -138,7 +140,7 @@ async def test_claim_update_status(test_client: AsyncClient, db_pool, sample_cla
 async def test_invalid_claim_type(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test creation of a claim with an invalid claim type."""
     logger.info("Testing claim creation with invalid claim type")
-    headers = {"Authorization": f"Bearer {generate_test_token(user_id=1, role='ADMIN')}"}
+    headers = {"Authorization": f"Bearer {test_token}"}
     sample_claim_data["claim_type"] = "invalid_type"
     response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     assert response.status_code == 400, f"Expected status 400 for invalid claim type, but got {response.status_code}"
@@ -147,7 +149,7 @@ async def test_invalid_claim_type(test_client: AsyncClient, db_pool, sample_clai
 async def test_future_admission_date(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
     """Test creation of a claim with a future admission date."""
     logger.info("Testing claim creation with future admission date")
-    headers = {"Authorization": f"Bearer {generate_test_token(user_id=1, role='ADMIN')}"}
+    headers = {"Authorization": f"Bearer {test_token}"}
     sample_claim_data["admission_date"] = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     response = await test_client.post("/create_claim", json=sample_claim_data, headers=headers)
     assert response.status_code == 400, f"Expected status 400 for future admission date, but got {response.status_code}"

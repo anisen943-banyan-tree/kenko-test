@@ -80,18 +80,18 @@ async def document_processor(processor_config):
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_limiter():
-    from fastapi_limiter import FastAPILimiter
+    from fastapi_limiter import FastAPILimiter  # Ensure FastAPILimiter is correctly imported
     from redis.asyncio import Redis
     redis = Redis(host="localhost", port=6379, decode_responses=True)
-    await FastAPILimiter.init(redis)
+    await FastAPILimiter.init(redis)  # Ensure FastAPILimiter is initialized correctly
     yield
-    await redis.close()
+    await redis.close()  # Correct usage already found, no change needed
 
 class TestDocumentVersioning:
     """Test suite for document versioning functionality."""
     
     @pytest.mark.asyncio
-    async def test_create_version(self, document_processor):
+    async def test_create_version(self, document_processor, test_token):
         """Test creating a new document version."""
         # Setup
         document_id = str(uuid.uuid4())
@@ -100,9 +100,10 @@ class TestDocumentVersioning:
             "old_value": "pending",
             "new_value": "verified"
         }
+        headers = {"Authorization": f"Bearer {test_token}"}
         
         # Execute
-        version_id = await document_processor.create_version(document_id, changes)
+        version_id = await document_processor.create_version(document_id, changes, headers=headers)
         
         # Verify
         assert version_id is not None, "Version ID should not be None"

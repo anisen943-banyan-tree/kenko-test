@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 class ExampleModel(BaseModel):
@@ -6,7 +5,7 @@ class ExampleModel(BaseModel):
     age: int = Field(..., json_schema_extra={"example": 30})
 
     class Config:
-        json_schema_extra = {
+        schema_extra = {
             "example": {
                 "name": "John Doe",
                 "age": 30

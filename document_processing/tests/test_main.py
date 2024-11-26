@@ -18,6 +18,17 @@ async def setup_cache():
     yield
     await FastAPICache.clear()  # Add `await` to clear cache
 
+@pytest.fixture
+async def db_pool():
+    """Create and clean test database"""
+    pool = await asyncpg.create_pool(
+        dsn=settings.database_url,
+        min_size=1,
+        max_size=5  # Reduce pool size for tests
+    )
+    yield pool
+    await pool.close()
+
 @pytest.mark.asyncio
 async def test_cache_initialization():
     FastAPICache.init(InMemoryBackend())  # Ensure initialization
@@ -28,12 +39,12 @@ async def test_cache_initialization():
 async def test_health_check_cache():
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok"}  # Fixed to match app_factory
 
     # Simulate a second request to check if the response is cached
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok"}  # Fixed to match app_factory
     await FastAPICache.clear()  # Add `await` to clear cache
 
 @pytest.mark.asyncio

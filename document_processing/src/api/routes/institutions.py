@@ -202,6 +202,11 @@ async def handle_institution_operation():
     async with transaction_scope():
         perform_operation()
 
+def role_check(user_role: str) -> bool:
+    """Verify if the user role has the required permissions."""
+    allowed_roles = ["admin", "user"]  # Adjust based on your application logic
+    return user_role in allowed_roles
+
 @router.get("/", response_model=List[Institution])
 @limiter.limit("5/minute")
 @cache(namespace=CACHE_NAMESPACE, expire=300)  # Cache for 5 minutes

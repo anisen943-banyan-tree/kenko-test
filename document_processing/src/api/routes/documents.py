@@ -341,9 +341,13 @@ async def get_processor(request: Request):
 def get_document_processor(request: Request):
     return request.app.state.document_processor
 
-@router.get("/health", tags=["health"])
+@router.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    try:
+        # Add any specific document service health checks here
+        return {"status": "ok"}  # Changed from 'healthy' to 'ok'}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 @router.get("/documents/health", tags=["health"])
 async def check_health() -> dict:

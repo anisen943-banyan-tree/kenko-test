@@ -59,12 +59,12 @@ def setup_test_env():
 async def db_pool():
     """Create a function-scoped database pool."""
     pool = await asyncpg.create_pool(
-        dsn=settings.database_url,
+        dsn=settings.database_url,  # Use same DSN as DocumentProcessor
         min_size=1,
         max_size=10
     )
     yield pool
-    await pool.close()
+    await pool.terminate()  # Ensures connections are released
 
 @pytest.fixture
 async def db_pool_transaction(db_pool):
@@ -98,30 +98,25 @@ def event_loop():
     yield loop
     loop.close()
 
-# Update initialize_app to use function-scoped event_loop
-@pytest.fixture(scope="function")
-async def initialize_app(event_loop, db_pool):
-    """Initialize the FastAPI app with proper event loop and db_pool."""
-    from src.document.document_processor import ProcessorConfig
+# Add mock_document_processor fixture
+from unittest.mock import AsyncMock
 
-    # Create ProcessorConfig instance
-    processor_config = ProcessorConfig()
+@pytest.fixture
+async def mock_document_processor(mocker):
+    """Mock DocumentProcessor class."""
+    mock_processor = mocker.patch('src.document.document_processor.DocumentProcessor', autospec=True)
+    mock_processor_instance = mock_processor.return_value
+    mock_processor_instance.store_document = AsyncMock(return_value="mock_document_id")
+    return mock_processor_instance
 
-    # Initialize DocumentProcessor with db_pool and processor_config
-    app.state.document_processor = DocumentProcessor(pool=db_pool, config=processor_config)
-
-    await app.router.startup()
-    yield app
-    await app.router.shutdown()
+# Update test_client fixture to use mock_document_processor
+@pytest.fixture
+async def test_client(mock_document_processor):
+    """Create test client for FastAPI app."""
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
 # Add test client fixture for FastAPI tests
-@pytest.fixture
-async def test_client(initialize_app):
-    """Create test client for FastAPI app."""
-    from httpx import AsyncClient
-    async with AsyncClient(app=initialize_app, base_url="http://testserver") as ac:
-        yield ac
-
 @pytest.fixture
 async def async_client():
     from httpx import AsyncClient
@@ -133,14 +128,24 @@ import jwt
 
 @pytest.fixture
 def test_token():
-    """Generate test JWT token."""
+    secret_key = settings.jwt_secret_key
     payload = {
         "user_id": "test_user",
         "role": "admin",
-        "exp": datetime.utcnow() + timedelta(days=1)
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
     }
-    secret = os.getenv('JWT_SECRET_KEY')  # Use the JWT secret from environment variables
-    return jwt.encode(payload, secret, algorithm="HS256")
+    return jwt.encode(payload, secret_key, algorithm="HS256")
+
+@pytest.fixture
+def generate_test_token():
+    def _generate_test_token(user_id: int, role: str = "ADMIN", exp: timedelta = timedelta(hours=1)):
+        payload = {
+            "user_id": user_id,
+            "role": role,
+            "exp": (datetime.now(timezone.utc) + exp).timestamp(),
+        }
+        return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return _generate_test_token
 
 @pytest.fixture
 def mock_settings(mocker):
@@ -184,19 +189,6 @@ async def async_fixture(event_loop):
     result = await some_async_setup()
     yield result
     await some_async_teardown(result)
-
-@pytest.fixture
-async def document_processor():
-    processor = DocumentProcessor()  # Proper initialization
-    yield processor
-
-@pytest.fixture(scope="function", autouse=True)
-async def db_session(db_pool):
-    async with db_pool.acquire() as conn:
-        tx = conn.transaction()
-        await tx.start()
-        yield conn
-        await tx.rollback()
 
 from httpx import AsyncClient
 from fastapi_cache import FastAPICache
@@ -306,3 +298,64 @@ async def setup_cache():
     FastAPICache.init(InMemoryBackend())
     yield
     await FastAPICache.clear()
+
+@pytest.fixture
+def mock_trigger_lambda(monkeypatch):
+    def fake_trigger_lambda(*args, **kwargs):
+        return {"status": "success"}
+    monkeypatch.setattr("src.document.document_processor.trigger_lambda", fake_trigger_lambda)
+
+from unittest.mock import AsyncMock
+
+@pytest.fixture
+async def mock_document_processor(mocker):
+    """Mock DocumentProcessor class."""
+    mock_processor = mocker.patch('src.document.document_processor.DocumentProcessor', autospec=True)
+    mock_processor_instance = mock_processor.return_value
+    mock_processor_instance.store_document = AsyncMock(return_value="mock_document_id")
+    return mock_processor_instance
+
+import pytest
+from unittest.mock import patch
+
+@pytest.fixture
+def mock_role_check():
+    """Mock the role_check function to always return True."""
+    with patch('src.api.routes.institutions.role_check', return_value=True):
+        yield
+
+import pytest
+from fastapi import FastAPI
+from httpx import AsyncClient
+from contextlib import asynccontextmanager
+from src.app_factory import create_app
+from src.document.document_processor import DocumentProcessor, ProcessorConfig
+from src.config.settings import settings
+
+@pytest.fixture(scope="session", autouse=True)
+async def initialize_app():
+    """Initialize the app and DocumentProcessor before any tests run."""
+    app = create_app()
+    async with asynccontextmanager(app.lifespan)(app):
+        yield app
+
+@pytest.fixture
+async def test_client(initialize_app):
+    """Create test client with initialized DocumentProcessor."""
+    async with AsyncClient(app=initialize_app, base_url="http://test") as client:
+        yield client
+
+import jwt
+from datetime import datetime, timedelta, timezone
+from src.config.settings import settings
+
+@pytest.fixture
+def generate_test_token():
+    def _generate_test_token(user_id: int, role: str = "ADMIN", exp: timedelta = timedelta(hours=1)):
+        payload = {
+            "user_id": user_id,
+            "role": role,
+            "exp": (datetime.now(timezone.utc) + exp).timestamp(),
+        }
+        return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return _generate_test_token

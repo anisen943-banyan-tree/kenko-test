@@ -440,3 +440,12 @@ async def process_with_retry(document_id):
 @retry(wait=wait_fixed(2000), stop=stop_after_attempt(5))
 def some_function():
     pass  # Placeholder for actual logic
+
+def trigger_lambda(*args, **kwargs):
+    return {"status": "success"}
+
+class ProcessorConfig:
+    def __init__(self, redis_url: str, max_retries: int = 3, timeout: int = 30):
+        self.redis_url = redis_url
+        self.max_retries = max_retries
+        self.timeout = timeout

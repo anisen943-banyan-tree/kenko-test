@@ -23,8 +23,16 @@ async def lifespan(app: FastAPI):
     )
     await FastAPILimiter.init(redis_conn)
     FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+
+    # Initialize and attach document processor to app state
+    dsn = settings.database_dsn
+    config = ProcessorConfig()
+    app.state.document_processor = await DocumentProcessor.create(dsn=dsn, config=config)
+
     yield
+
     await FastAPICache.clear()
+    await redis_conn.close()
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -46,17 +54,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Initialize and attach document processor to app state
-    async def init_document_processor():
-        # Replace 'dsn' and 'config' with actual parameters or settings
-        dsn = settings.database_dsn
-        config = ProcessorConfig()
-        app.state.document_processor = await DocumentProcessor.create(dsn=dsn, config=config)
-
-    @app.on_event("startup")
-    async def on_startup():
-        await init_document_processor()
 
     # Middleware: Authorization
     @app.middleware("http")

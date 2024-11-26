@@ -5,15 +5,17 @@ from pydantic import Field
 import os
 import logging
 import json_log_formatter
+from typing import ClassVar
 
 class Settings(BaseSettings):
-    jwt_secret_key: str = Field(default="default_secret_key", alias="JWT_SECRET_KEY")
-    database_dsn: str = Field(default="sqlite:///:memory:", alias="DATABASE_DSN")  # Fallback to SQLite for tests
+    jwt_secret_key: str = Field(default="default_secret_key", alias="JWT_SECRET_KEY", json_schema_extra={"description": "JWT secret key for authentication"})
+    database_dsn: str = Field(default="sqlite:///:memory:", alias="DATABASE_DSN", json_schema_extra={"description": "Database DSN for connection"})  # Fallback to SQLite for tests
     database_url: str = os.getenv(
         "DATABASE_URL",
         "postgresql://claimsuser:Claims2024#Secure!@localhost/claimsdb_test"
     )
-    environment: str = Field(default="production", alias="ENVIRONMENT")
+    hostlist: ClassVar[str] = 'localhost:5432'  # Updated with ClassVar annotation
+    environment: str = Field(default="production", alias="ENVIRONMENT", json_schema_extra={"description": "Environment setting"})
     test_database_url: str = os.getenv("TEST_DATABASE_URL", "postgresql://test_user:test_password@localhost/test_dbname")
     test_environment: str = os.getenv("TEST_ENVIRONMENT", "test").lower()
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "your_default_value")

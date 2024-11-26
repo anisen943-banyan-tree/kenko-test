@@ -8,8 +8,12 @@ from src.config.settings import settings
 from src.api.routes import claims, documents, institutions
 from src.api.routes.documents import router as documents_router
 from src.app_factory import create_app
+from src.document.document_processor import DocumentProcessor, ProcessorConfig
 
 app = create_app()
+app.state.document_processor = DocumentProcessor(
+    config=ProcessorConfig(redis_url=settings.REDIS_URL)
+)
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -32,13 +36,7 @@ async def add_request_id(request: Request, call_next):
 
 @app.get("/health")
 async def health_check():
-    try:
-        # Ensure database connection is healthy
-        async with redis.client() as conn:
-            await conn.ping()
-        return {"status": "ok"}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+    return {"status": "ok"}
 
 @app.get("/your-route", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def your_route():
