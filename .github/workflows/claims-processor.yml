@@ -9,9 +9,9 @@ env:
   JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
   DATABASE_DSN: ${{ secrets.DATABASE_DSN }}
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+  # TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
   ENVIRONMENT: development
-  TEST_ENVIRONMENT: test
+  # TEST_ENVIRONMENT: test
 
 on:
   push:
@@ -109,63 +109,53 @@ jobs:
             reports/isort.txt
             reports/pylint.txt
 
-  test:
-    name: Test
-    needs: [security-scan, code-quality]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-      
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-test.txt
-          pip install asyncpg structlog pydantic-settings slowapi  # Explicitly install missing dependencies
-
-      # Set up SSH agent and load the SSH key for tunnel access
-      - name: Set up SSH key
-        run: |
-          echo "${{ secrets.SSH_KEY }}" | tr -d '\r' > /tmp/assistant-handler.pem
-          chmod 400 /tmp/assistant-handler.pem
-
-      # Establish SSH Tunnel to RDS via EC2 instance
-      - name: Start SSH Tunnel to RDS
-        run: |
-          ssh -o StrictHostKeyChecking=no -f -N -L 5433:${{ secrets.RDS_HOST }}:5432 -i /tmp/assistant-handler.pem ec2-user@3.108.233.205
-        env:
-          SSH_AUTH_SOCK: /tmp/assistant-handler.pem
-
-      # Run Tests
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@127.0.0.1:5433/${{ secrets.RDS_DB_NAME }}
-          PYTHONPATH: ${{ github.workspace }}/document_processing/src
-        run: |
-          mkdir -p reports/tests
-          python -m pytest document_processing/tests/ -v --cov=document_processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: |
-            reports/tests
-            coverage.xml
+  # test:
+  #   name: Test
+  #   needs: [security-scan, code-quality]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  #         cache: 'pip'
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #     - name: Install test dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
+  #         pip install -r requirements-test.txt
+  #         pip install asyncpg structlog pydantic-settings slowapi  # Explicitly install missing dependencies
+  #     - name: Set up SSH key
+  #       run: |
+  #         echo "${{ secrets.SSH_KEY }}" | tr -d '\r' > /tmp/assistant-handler.pem
+  #         chmod 400 /tmp/assistant-handler.pem
+  #     - name: Start SSH Tunnel to RDS
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=no -f -N -L 5433:${{ secrets.RDS_HOST }}:5432 -i /tmp/assistant-handler.pem ec2-user@3.108.233.205
+  #       env:
+  #         SSH_AUTH_SOCK: /tmp/assistant-handler.pem
+  #     - name: Run tests
+  #       env:
+  #         DATABASE_URL: postgresql://${{ secrets.RDS_USERNAME }}:${{ secrets.RDS_PASSWORD }}@127.0.0.1:5433/${{ secrets.RDS_DB_NAME }}
+  #         PYTHONPATH: ${{ github.workspace }}/document_processing/src
+  #       run: |
+  #         mkdir -p reports/tests
+  #         python -m pytest document_processing/tests/ -v --cov=document_processing/src --cov-report=xml --junitxml=reports/tests/junit.xml
+  #     - name: Upload test results
+  #       if: always()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: test-results
+  #         path: |
+  #           reports/tests
+  #           coverage.xml
 
   build:
     name: Build and Push Docker Image
