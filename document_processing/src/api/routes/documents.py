@@ -344,8 +344,9 @@ def get_document_processor(request: Request):
 @router.get("/health")
 async def health_check():
     try:
-        # Add any specific document service health checks here
-        return {"status": "ok"}  # Changed from 'healthy' to 'ok'}
+        async with router.state.pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 

@@ -260,6 +260,15 @@ async def update_institution(
         logger.error("Failed to update institution", error=str(e))
         raise HTTPException(status_code=500, detail="Error updating institution")
 
+@router.get("/health")
+async def health_check():
+    try:
+        async with router.state.pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
 @pytest.fixture(autouse=True)
 async def mock_dependencies():
     app.state.pool = AsyncMock()  # Mock database pool

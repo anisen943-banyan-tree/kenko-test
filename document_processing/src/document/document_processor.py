@@ -8,6 +8,8 @@ import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_fixed
 import json
 import logging
+import boto3
+from botocore.exceptions import ClientError
 # from retrying import retry  # Removed as tenacity is already imported
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,7 @@ class DocumentProcessor:
     def __init__(self, pool: asyncpg.Pool, config: ProcessorConfig):
         self.pool = pool
         self.config = config
+        self.lambda_client = boto3.client('lambda')
         # Add validation or transformation if necessary
         if not isinstance(config, ProcessorConfig):
             raise ValueError("Invalid config type")
@@ -27,6 +30,7 @@ class DocumentProcessor:
         self._cleanup_lock = asyncio.Lock()
         self._maintenance_task = None
         self._partition_lock = asyncio.Lock()
+        self.initialized = False
 
     @classmethod
     async def create(cls, dsn: str, config: ProcessorConfig) -> 'DocumentProcessor':
@@ -219,6 +223,19 @@ class DocumentProcessor:
                 )
                 raise
 
+        try:
+            textract_output = validate_and_parse_lambda_output(content)
+            textract_output = validate_lambda_output(textract_output)
+        except FileNotFoundError:
+            self.logger.error("Lambda output file not found.")
+            raise
+        except ValueError as e:
+            self.logger.error(f"Invalid output from Lambda: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Processing failed after retries: {e}")
+            raise
+
     async def _ensure_partition_exists(self, year: int):
         """Ensure partition exists for a given year."""
         async with self._partition_lock:
@@ -408,6 +425,25 @@ class DocumentProcessor:
         except PartitionError as e:
             log_error(e)
             rollback_transaction()
+
+    async def trigger_lambda_task(self, document_id: str):
+        """Invoke AWS Lambda function for document processing."""
+        if not self.initialized:
+            raise Exception("DocumentProcessor not initialized")
+        try:
+            response = self.lambda_client.invoke(
+                FunctionName='your_lambda_function_name',
+                InvocationType='Event',
+                Payload=json.dumps({'document_id': document_id})
+            )
+            return json.loads(response['Payload'].read())
+        except ClientError as e:
+            self.logger.error(f"Failed to invoke Lambda function: {str(e)}")
+            raise RuntimeError("Lambda task failed.")
+
+    async def initialize(self):
+        self.initialized = True
+        return True
 
 def validate_and_parse_lambda_output(content):
     """

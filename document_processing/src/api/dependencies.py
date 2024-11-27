@@ -23,12 +23,17 @@ async def get_db_pool():
 
 # JWT token verification
 def verify_jwt_token(token: str):
-    payload = jwt.decode(token, key=settings.jwt_secret_key, algorithms=["HS256"])
-    if payload['exp'] < time.time():
+    try:
+        payload = jwt.decode(token, key=settings.jwt_secret_key, algorithms=["HS256"])
+        if payload['exp'] < time.time():
+            raise HTTPException(status_code=401, detail="Token expired")
+        if "scope" not in payload or not validate_scope(payload['scope']):
+            raise HTTPException(status_code=403, detail="Invalid scope")
+        return payload
+    except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    if "scope" not in payload or not validate_scope(payload['scope']):
-        raise HTTPException(status_code=403, detail="Invalid scope")
-    return payload
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 def verify_admin_token(credentials: HTTPAuthorizationCredentials = Security(security)):
     payload = verify_jwt_token(credentials.credentials)

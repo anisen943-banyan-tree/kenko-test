@@ -12,7 +12,7 @@ from src.api.routes.institutions import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from src.config.settings import settings
 from fastapi_cache import FastAPICache
@@ -147,6 +147,17 @@ def test_token():
 def test_headers(test_token):
     """Create headers with test JWT token."""
     return {"Authorization": f"Bearer {test_token}"}
+
+@pytest.fixture
+def generate_test_token():
+    def _generate_test_token(user_id: int, role: str = "ADMIN", exp: timedelta = timedelta(hours=1)):
+        payload = {
+            "user_id": user_id,
+            "role": role,
+            "exp": (datetime.now(timezone.utc) + exp).timestamp(),
+        }
+        return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return _generate_test_token
 
 @pytest.mark.asyncio
 async def test_list_institutions_success(async_client, mock_db_pool, mock_role_check, test_headers):

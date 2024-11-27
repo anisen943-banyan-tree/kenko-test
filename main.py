@@ -11,9 +11,20 @@ from src.app_factory import create_app
 from src.document.document_processor import DocumentProcessor, ProcessorConfig
 
 app = create_app()
-app.state.document_processor = DocumentProcessor(
-    config=ProcessorConfig(redis_url=settings.REDIS_URL)
-)
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        app.state.pool = await asyncpg.create_pool(dsn=settings.database_url)
+        app.state.document_processor = DocumentProcessor(
+            config=ProcessorConfig(redis_url=settings.REDIS_URL)
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize app: {str(e)}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await app.state.pool.close()
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -36,7 +47,12 @@ async def add_request_id(request: Request, call_next):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    try:
+        async with app.state.pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 @app.get("/your-route", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def your_route():

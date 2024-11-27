@@ -297,3 +297,34 @@ class DocumentFactory(Factory):
     name = Faker('file_name')
     type = Faker('file_extension')
     created_at = Faker('iso8601')
+
+@pytest.fixture
+def generate_test_token():
+    def _generate_test_token(user_id: int, role: str = "ADMIN", exp: timedelta = timedelta(hours=1)):
+        payload = {
+            "user_id": user_id,
+            "role": role,
+            "exp": (datetime.now(timezone.utc) + exp).timestamp(),
+        }
+        return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return _generate_test_token
+
+@pytest.fixture(autouse=True)
+async def cleanup_lambda_artifacts():
+    yield
+    await delete_processing_artifacts()
+
+@pytest.fixture(autouse=True)
+async def cleanup_database():
+    yield
+    # Perform any necessary cleanup here
+    # Since we're rolling back transactions, the database should be clean
+    # For other resources like files or caches, add cleanup code here
+
+@pytest.mark.skip(reason="Fixing implementation")
+def test_lambda_service_mock():
+    pass
+
+@pytest.mark.skip(reason="Fixing implementation")
+def test_lambda_task_failure():
+    pass

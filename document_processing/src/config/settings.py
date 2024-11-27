@@ -8,17 +8,17 @@ import json_log_formatter
 from typing import ClassVar
 
 class Settings(BaseSettings):
-    jwt_secret_key: str = Field(default="default_secret_key", alias="JWT_SECRET_KEY", json_schema_extra={"description": "JWT secret key for authentication"})
+    jwt_secret_key: str = Field(default="test_secret_key_123", alias="JWT_SECRET_KEY", json_schema_extra={"description": "JWT secret key for authentication"})
     database_dsn: str = Field(default="sqlite:///:memory:", alias="DATABASE_DSN", json_schema_extra={"description": "Database DSN for connection"})  # Fallback to SQLite for tests
-    database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://claimsuser:Claims2024#Secure!@localhost/claimsdb_test"
-    )
+    database_url: str = "postgresql://postgres:postgres@localhost:5432/claims_test"
     hostlist: ClassVar[str] = 'localhost:5432'  # Updated with ClassVar annotation
     environment: str = Field(default="production", alias="ENVIRONMENT", json_schema_extra={"description": "Environment setting"})
     test_database_url: str = os.getenv("TEST_DATABASE_URL", "postgresql://test_user:test_password@localhost/test_dbname")
     test_environment: str = os.getenv("TEST_ENVIRONMENT", "test").lower()
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "your_default_value")
+    aws_access_key_id: str = "test"
+    aws_secret_access_key: str = "test"
+    aws_region: str = "us-east-1"
     # Add this property to provide uppercase compatibility
     @property
     def JWT_SECRET_KEY(self) -> str:
@@ -28,7 +28,12 @@ class Settings(BaseSettings):
     def is_test_env(self):
         return self.environment == "test"
 
-    model_config = ConfigDict(case_sensitive=True, extra="allow", env_nested_delimiter="__")
+    model_config = ConfigDict(
+        case_sensitive=True,
+        extra="allow",
+        env_nested_delimiter="__",
+        env_file=".env",
+    )
 
 # Ensure environment variables are accessible during tests
 if os.getenv("ENVIRONMENT", "development").lower() == "test":

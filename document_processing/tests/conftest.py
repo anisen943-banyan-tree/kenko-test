@@ -55,7 +55,30 @@ def setup_test_env():
     os.environ.pop("DATABASE_URL")
     os.environ.pop("API_KEY")
 
-@pytest.fixture(scope="function")
+from fastapi import FastAPI
+from httpx import AsyncClient
+from contextlib import asynccontextmanager
+from src.app_factory import create_app
+from src.document.document_processor import DocumentProcessor, ProcessorConfig
+from src.config.settings import settings
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from unittest.mock import AsyncMock
+
+@pytest.fixture(scope="session", autouse=True)
+async def initialize_app():
+    """Initialize the app and DocumentProcessor before any tests run."""
+    app = create_app()
+    async with asynccontextmanager(app.lifespan)(app):
+        yield app
+
+@pytest.fixture
+async def test_client(initialize_app):
+    """Create test client with initialized DocumentProcessor."""
+    async with AsyncClient(app=initialize_app, base_url="http://test") as client:
+        yield client
+
+@pytest.fixture(scope="function", autouse=True)
 async def db_pool():
     """Create a function-scoped database pool."""
     pool = await asyncpg.create_pool(
@@ -64,30 +87,31 @@ async def db_pool():
         max_size=10
     )
     yield pool
-    await pool.terminate()  # Ensures connections are released
+    await pool.close()  # Ensures connections are released
 
 @pytest.fixture
-async def db_pool_transaction(db_pool):
-    """Start a transaction for each test and roll it back afterward."""
-    async with db_pool.acquire() as connection:
-        transaction = connection.transaction()
-        await transaction.start()
-        yield connection  # Provide the connection to the test
-        await transaction.rollback()  # Roll back after the test
+def generate_test_token():
+    def _generate_test_token(user_id: int, role: str = "ADMIN", exp: timedelta = timedelta(hours=1)):
+        payload = {
+            "user_id": user_id,
+            "role": role,
+            "exp": (datetime.now(timezone.utc) + exp).timestamp(),
+        }
+        return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return _generate_test_token
 
-@pytest.fixture
-async def setup_test_data(db_pool_transaction):
-    """Initialize test data in the database."""
-    connection = db_pool_transaction
-    # Example: Insert test data
-    await connection.execute("""
-        INSERT INTO users (id, name, email) VALUES ($1, $2, $3)
-    """, 1, 'Test User', 'test@example.com')
-    # Add more test data as required
+@pytest.fixture(autouse=True)
+async def setup_cache():
+    """Setup and teardown FastAPI Cache for tests."""
+    FastAPICache.init(RedisBackend())
     yield
-    # No need for cleanup; transaction rollback will handle it
+    await FastAPICache.clear()
 
-# Create a session-scoped event loop fixture
+@pytest.fixture(autouse=True)
+async def cleanup_lambda_artifacts():
+    yield
+    await delete_processing_artifacts()  # Mock or define this cleanup logic.
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create a session-scoped event loop."""
@@ -270,9 +294,6 @@ async def manage_partition_transaction(db_pool):
 
 @pytest.fixture(scope="function", autouse=True)
 async def cleanup_partitions(db_pool):
-    """
-    Clean up test partitions after each test function.
-    """
     async with db_pool.acquire() as conn:
         await conn.execute("TRUNCATE TABLE your_partitioned_table CASCADE")
 
@@ -359,3 +380,67 @@ def generate_test_token():
         }
         return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
     return _generate_test_token
+
+@pytest.fixture
+async def processor_config():
+    config = ProcessorConfig(
+        document_bucket="test-bucket",
+        confidence_threshold=0.8,
+        batch_size=5,
+        max_connections=5,
+        min_connections=2,
+        cleanup_batch_size=100,
+    )
+    yield config
+    await config.cleanup()
+
+import pytest
+from datetime import datetime, timedelta
+import jwt
+from fastapi.testclient import TestClient
+from redis import Redis
+from fastapi_limiter import FastAPILimiter
+
+from src.config.settings import settings
+
+@pytest.fixture(autouse=True)
+def auth_headers():
+    token = jwt.encode(
+        {
+            "sub": "test_user",
+            "role": "ADMIN",
+            "exp": datetime.utcnow() + timedelta(hours=1)
+        },
+        settings.jwt_secret_key,
+        algorithm="HS256"
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture
+def test_client(auth_headers):
+    app = create_app()
+    with TestClient(app) as client:
+        client.headers.update(auth_headers)
+        yield client
+
+@pytest.fixture(autouse=True)
+def mock_document_processor(mocker):
+    mock = mocker.patch('src.document.document_processor.DocumentProcessor')
+    mock.return_value.trigger_lambda_task.return_value = True
+    mock.return_value.initialize.return_value = True
+    return mock
+
+@pytest.fixture(autouse=True)
+async def setup_redis():
+    redis = Redis(host='localhost', port=6379, db=0)
+    await FastAPILimiter.init(redis)
+    yield
+    await redis.flushdb()
+    await redis.close()
+
+@pytest.fixture(autouse=True)
+def mock_aws_services(mocker):
+    mock_s3 = mocker.patch('boto3.client')
+    mock_s3.return_value.upload_fileobj.return_value = None
+    mock_s3.return_value.download_fileobj.return_value = None
+    return mock_s3
