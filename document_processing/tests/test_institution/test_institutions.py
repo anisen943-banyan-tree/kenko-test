@@ -160,20 +160,22 @@ def generate_test_token():
     return _generate_test_token
 
 @pytest.mark.asyncio
-async def test_list_institutions_success(async_client, mock_db_pool, mock_role_check, test_headers):
+async def test_list_institutions_success(async_client, mock_db_pool, mock_role_check, test_token):
     """Test successful listing of institutions with caching."""
+    headers = {"Authorization": f"Bearer {test_token}"}
     test_data = get_mock_institutions()
     with patch('src.api.routes.institutions.get_db_pool', return_value=mock_db_pool), \
          patch('src.api.routes.institutions.verify_admin_token') as mock_verify:
         mock_verify.return_value = {"user_id": 1, "role": "ADMIN"}
         with patch.object(InstitutionManager, 'list_institutions', new_callable=AsyncMock, return_value=test_data):
-            response = await async_client.get("/admin/institutions/", headers=test_headers)
+            response = await async_client.get("/admin/institutions/", headers=headers)
             assert response.status_code == 200
             assert response.json() == test_data
 
 @pytest.mark.asyncio
-async def test_create_institution_invalidates_cache(async_client, mock_db_pool, mock_role_check, test_headers):
+async def test_create_institution_invalidates_cache(async_client, mock_db_pool, mock_role_check, test_token):
     """Test that creating a new institution invalidates the cache."""
+    headers = {"Authorization": f"Bearer {test_token}"}
     test_data = {
         "name": "New Institution",
         "code": "NEW123",
@@ -184,18 +186,19 @@ async def test_create_institution_invalidates_cache(async_client, mock_db_pool, 
     with patch.object(InstitutionManager, 'create_institution', new_callable=AsyncMock) as mock_create:
         mock_create.return_value = {**test_data, "id": 1, "status": "ACTIVE"}
         with patch('fastapi_cache.FastAPICache.clear') as mock_cache_clear:
-            response = await async_client.post("/admin/institutions/", json=test_data, headers=test_headers)
+            response = await async_client.post("/admin/institutions/", json=test_data, headers=headers)
             assert response.status_code == 200
             assert response.json()["name"] == test_data["name"]
             mock_cache_clear.assert_called_once_with(namespace="institutions")
 
 @pytest.mark.asyncio
-async def test_rate_limit_disabled_in_test(async_client, mock_db_pool, mock_role_check, test_headers):
+async def test_rate_limit_disabled_in_test(async_client, mock_db_pool, mock_role_check, test_token):
     """Verify rate limiter is disabled in test environment."""
+    headers = {"Authorization": f"Bearer {test_token}"}
     app.state.limiter.enabled = False  # Ensure limiter is disabled
     with patch('src.api.routes.institutions.get_db_pool', return_value=mock_db_pool):
         for _ in range(10):
-            response = await async_client.get("/admin/institutions/", headers=test_headers)
+            response = await async_client.get("/admin/institutions/", headers=headers)
             assert response.status_code == 200
 
 @pytest.mark.asyncio

@@ -78,6 +78,11 @@ async def document_processor(processor_config):
     processor.create_version = AsyncMock(return_value="mock-version-id")
     yield processor
 
+@pytest_asyncio.fixture
+async def test_token():
+    """Fixture for providing a test token."""
+    return "test-token"
+
 @pytest.fixture(scope="session", autouse=True)
 async def setup_limiter():
     from fastapi_limiter import FastAPILimiter  # Ensure FastAPILimiter is correctly imported

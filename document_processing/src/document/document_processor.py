@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
-from claims_processor.processor import ProcessorConfig, DocumentMetadata, VerificationStatus, DocumentType  # Ensure this import is correct
+from src.claims_processor.processor import ProcessorConfig, DocumentMetadata, VerificationStatus, DocumentType  # Ensure this import is correct
 
 class DocumentProcessor:
     """Enhanced document processor with improved PostgreSQL optimizations."""
@@ -22,7 +22,7 @@ class DocumentProcessor:
     def __init__(self, pool: asyncpg.Pool, config: ProcessorConfig):
         self.pool = pool
         self.config = config
-        self.lambda_client = boto3.client('lambda')
+        self.lambda_client = boto3.client('lambda', region_name='ap-south-1a')
         # Add validation or transformation if necessary
         if not isinstance(config, ProcessorConfig):
             raise ValueError("Invalid config type")
@@ -35,6 +35,10 @@ class DocumentProcessor:
     @classmethod
     async def create(cls, dsn: str, config: ProcessorConfig) -> 'DocumentProcessor':
         """Create processor with optimized connection pool and initialization."""
+        logging.info(f"Config type received: {type(config)}")
+        if not isinstance(config, ProcessorConfig):
+            raise ValueError("Invalid config type")
+
         pool = await asyncpg.create_pool(
             dsn,
             min_size=config.min_connections,

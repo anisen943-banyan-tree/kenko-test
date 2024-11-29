@@ -45,18 +45,10 @@ async def add_request_id(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     return response
 
-@app.get("/health")
-async def health_check():
-    try:
-        async with app.state.pool.acquire() as conn:
-            await conn.execute("SELECT 1")
-        return {"status": "ok"}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
 @app.get("/your-route", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def your_route():
     # Your code here
+    pass
 
 # Include your routers
 app.include_router(claims.router)

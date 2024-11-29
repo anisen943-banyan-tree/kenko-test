@@ -15,7 +15,7 @@ from src.config.settings import settings
 from src.api.routes.documents import router as documents_router
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
-from src.document_processor import DocumentProcessor  # Import DocumentProcessor
+from src.document.document_processor import DocumentProcessor
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
             max_size=10,
             max_inactive_connection_lifetime=300
         )
-        app.state.document_processor = DocumentProcessor()  # Initialize DocumentProcessor
+        app.state.document_processor = DocumentProcessor()
         logging.info("Database pool, DocumentProcessor, and FastAPICache initialized successfully.")
     except Exception as e:
         logging.error(f"Error during startup: {e}")
@@ -86,19 +86,6 @@ async def log_requests(request: Request, call_next):
     except Exception as e:
         logging.error(f"Error in log_requests middleware: {e}")
         raise
-
-@app.get("/health", tags=["health"])
-@cache(expire=60)
-async def health_check():
-    if not hasattr(app.state, "pool"):
-        return {"status": "error", "details": "Database pool not initialized."}
-    try:
-        async with app.state.pool.acquire(timeout=5) as connection:
-            await connection.execute("SELECT 1")
-        return {"status": "ok"}
-    except Exception as e:
-        logging.error(f"Health check failed: {e}")
-        return {"status": "error", "details": str(e)}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

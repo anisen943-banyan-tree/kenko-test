@@ -19,10 +19,15 @@ class Settings(BaseSettings):
     aws_access_key_id: str = "test"
     aws_secret_access_key: str = "test"
     aws_region: str = "us-east-1"
+    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL", json_schema_extra={"description": "Redis URL for caching"})
     # Add this property to provide uppercase compatibility
     @property
     def JWT_SECRET_KEY(self) -> str:
         return self.jwt_secret_key
+
+    @property
+    def REDIS_URL(self) -> str:
+        return self.redis_url
 
     @property
     def is_test_env(self):

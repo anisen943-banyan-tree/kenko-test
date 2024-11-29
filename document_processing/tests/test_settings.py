@@ -3,6 +3,9 @@
 import os
 import pytest
 from src.config.settings import Settings
+from pydantic_settings import BaseSettings
+from pydantic import Field, ConfigDict  # Add ConfigDict import
+from typing import ClassVar
 
 @pytest.fixture(autouse=True)
 def override_env_vars(monkeypatch):

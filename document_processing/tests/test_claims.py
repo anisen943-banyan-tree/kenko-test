@@ -1,4 +1,3 @@
-
 import pytest
 import pytest_asyncio
 import asyncio
@@ -25,18 +24,27 @@ TEST_DB_CONFIG = {
 }
 
 from src.app_factory import create_app  # Corrected import path
+from tests.conftest import generate_test_token  # Updated import path
 
 app = create_app()
 
 @pytest.fixture
 async def db_pool():
     """Create and clean test database"""
-    pool = await asyncpg.create_pool(**TEST_DB_CONFIG)
+    pool = await asyncpg.create_pool(**TEST_DB_CONFIG, max_size=5)  # Limit pool size
     async with pool.acquire() as conn:
-        await conn.execute("CREATE TABLE IF NOT EXISTS claims (...)")
-        await conn.execute("TRUNCATE claims, claim_documents, claim_processing CASCADE")
-    yield pool
-    await pool.close()
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS claims (
+                id SERIAL PRIMARY KEY,
+                claim_amount NUMERIC,
+                claim_type TEXT,
+                admission_date DATE,
+                discharge_date DATE,
+                status TEXT
+            )
+        """)
+    yield pool  # Provide pool to tests
+    await pool.close()  # Close pool after all tests
 
 @pytest_asyncio.fixture
 async def test_client():
@@ -47,12 +55,7 @@ async def test_client():
 @pytest.fixture
 def test_token():
     """Generate test JWT token."""
-    payload = {
-        "user_id": "test_user",
-        "role": "admin",
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
-    }
-    return jwt.encode(payload, "your-secret-key", algorithm="HS256")
+    return generate_test_token(user_id=1, role="admin")
 
 @pytest.fixture
 def sample_claim_data():
@@ -108,6 +111,10 @@ async def test_claim_creation(test_client: AsyncClient, db_pool, sample_claim_da
     response_data = response.json()
     assert "claim_id" in response_data, "Response should contain 'claim_id'"
     assert response_data.get("claim_id"), "Claim ID should be returned in response"
+    
+    async with db_pool.acquire() as conn:
+        result = await conn.fetch("SELECT * FROM claims WHERE id = $1", response_data.get("claim_id"))
+        assert len(result) == 1, "Claim should be present in the database"
 
 @pytest.mark.asyncio
 async def test_claim_retrieval(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
@@ -121,6 +128,10 @@ async def test_claim_retrieval(test_client: AsyncClient, db_pool, sample_claim_d
     assert response.status_code == 200, "Expected claim retrieval to return status 200"
     response_data = response.json()
     assert response_data.get("claim_id") == claim_id, "Claim ID mismatch in retrieval"
+    
+    async with db_pool.acquire() as conn:
+        result = await conn.fetch("SELECT * FROM claims WHERE id = $1", claim_id)
+        assert len(result) == 1, "Claim should be present in the database"
 
 @pytest.mark.asyncio
 async def test_claim_update_status(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):
@@ -135,6 +146,10 @@ async def test_claim_update_status(test_client: AsyncClient, db_pool, sample_cla
     assert response.status_code == 200, "Expected claim status update to return status 200"
     response_data = response.json()
     assert response_data.get("status") == "PROCESSING", "Claim status mismatch after update"
+    
+    async with db_pool.acquire() as conn:
+        result = await conn.fetch("SELECT status FROM claims WHERE id = $1", claim_id)
+        assert result[0]["status"] == "PROCESSING", "Claim status should be updated in the database"
 
 @pytest.mark.asyncio
 async def test_invalid_claim_type(test_client: AsyncClient, db_pool, sample_claim_data: Dict[str, Any], test_token: str):

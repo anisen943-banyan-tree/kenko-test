@@ -9,7 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from typing import Dict, List, Optional, Union, Tuple, Any, TypedDict
 from dataclasses import dataclass, field
 import time
-from prometheus_client import Summary
+from prometheus_client import Summary, REGISTRY
 from pydantic import Field
 
 # Type definitions - single source of truth
@@ -1037,6 +1037,14 @@ async def process_cross_partition_operations():
         pass
 def truncate_partition(partition_name):
     execute_sql(f"TRUNCATE TABLE {partition_name}")
+
+if "batch_process_time" in REGISTRY._names_to_collectors:
+    del REGISTRY._names_to_collectors["batch_process_time"]
+
+# Ensure cleanup of previous metrics before creating PROCESS_TIME
+for metric_name in ["batch_process_time_count", "batch_process_time_sum", "batch_process_time_created"]:
+    if metric_name in REGISTRY._names_to_collectors:
+        del REGISTRY._names_to_collectors[metric_name]
 
 PROCESS_TIME = Summary("batch_process_time", "Time spent processing a batch")
 
