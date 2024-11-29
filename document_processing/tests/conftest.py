@@ -173,3 +173,20 @@ async def check_db_connection(pool):
     """Check if database is accessible."""
     async with pool.acquire() as conn:
         await conn.execute("SELECT 1")
+
+@pytest.fixture(autouse=True)
+async def setup_test_cache():
+    """Initialize cache backend for tests."""
+    from fastapi_cache import FastAPICache
+    from fastapi_cache.backends.inmemory import InMemoryBackend
+    
+    backend = InMemoryBackend()
+    FastAPICache.init(backend, prefix="test")
+    
+    # Ensure backend is properly initialized
+    await backend.set("test_key", "test_value", 60)
+    
+    yield
+    
+    # Cleanup
+    await FastAPICache.clear()

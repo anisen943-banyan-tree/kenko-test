@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 import pytest
 from httpx import AsyncClient
 import asyncpg
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import FastAPI
 import redis.asyncio as redis
 from redis.exceptions import RedisError
@@ -53,47 +53,52 @@ async def test_app(app: FastAPI) -> FastAPI:
     """Create a test instance with mocked dependencies."""
     return app
 
-@pytest.fixture(scope="function")
-async def mock_db_pool() -> AsyncMock:
-    """Create a mock database pool."""
-    conn = AsyncMock()
-    conn.execute = AsyncMock(return_value=True)
+@pytest.fixture
+async def mock_redis_client():
+    """Create a mock Redis client."""
+    client = AsyncMock()
     
+    # Setup ping method
+    async def async_ping():
+        return True
+    client.ping = AsyncMock(side_effect=async_ping)
+    return client
+
+@pytest.fixture
+def mock_redis_from_url(mock_redis_client):
+    """Create a mock for redis.from_url."""
+    async def mock_from_url(*args, **kwargs):
+        return mock_redis_client
+    return mock_from_url
+
+@pytest.fixture
+async def mock_db_pool():
+    """Create a mock database pool with proper async context manager."""
+    class MockConnection:
+        async def execute(self, query):
+            return True
+
     class AsyncPoolContextManager:
-        def __init__(self, conn):
-            self.conn = conn
         async def __aenter__(self):
-            return self.conn
+            return MockConnection()
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             pass
-    
+
     pool = AsyncMock()
-    pool.acquire = lambda: AsyncPoolContextManager(conn)
+    # Key change: return the context manager directly
+    pool.acquire = MagicMock(return_value=AsyncPoolContextManager())
     return pool
 
 @pytest.fixture(scope="function")
-async def mock_redis_client() -> AsyncMock:
-    """Create a mock Redis client."""
-    client = AsyncMock()
-    client.ping = AsyncMock(return_value=True)
-    # Mock the client creation
-    async def mock_from_url(*args, **kwargs):
-        return client
-    client.from_url = mock_from_url
-    return client
-
-@pytest.fixture(scope="function")
-async def test_app_with_mocks(
-    test_app: FastAPI,
-    mock_db_pool: AsyncMock,
-    mock_redis_client: AsyncMock
-) -> FastAPI:
-    """Create a test app with mocked dependencies."""
+async def test_app_with_mocks(test_app: FastAPI, mock_db_pool: AsyncMock, mock_redis_client: AsyncMock):
+    """Create a test app with properly configured mocks."""
     test_app.state.pool = mock_db_pool
-    # Patch both Redis client and FastAPICache
-    with patch('redis.asyncio.Redis.from_url', return_value=mock_redis_client), \
-         patch('fastapi_cache.FastAPICache.get_backend') as mock_cache:
-        mock_cache.return_value = AsyncMock()
+    
+    # Patch Redis client creation
+    async def mock_from_url(*args, **kwargs):
+        return mock_redis_client
+    
+    with patch('redis.asyncio.Redis.from_url', new=mock_from_url):
         yield test_app
 
 @pytest.fixture(scope="function")
@@ -129,25 +134,33 @@ class TestHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_success(
         self,
-        test_app_with_mocks: FastAPI,
-        async_client: AsyncClient
+        test_app: FastAPI,
+        async_client: AsyncClient,
+        mock_db_pool: AsyncMock,
+        mock_redis_from_url
     ):
         """Test successful health check response."""
-        response = await async_client.get("/health")
-        assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+        test_app.state.pool = mock_db_pool
+        
+        with patch('redis.asyncio.Redis.from_url', new=mock_redis_from_url):
+            response = await async_client.get("/health")
+            assert response.status_code == 200
+            assert response.json() == {"status": "ok"}
 
     @pytest.mark.asyncio
     async def test_health_check_redis_error(
         self,
         test_app: FastAPI,
         async_client: AsyncClient,
-        mock_redis_client: AsyncMock
+        mock_redis_client: AsyncMock,
+        mock_redis_from_url
     ):
         """Test health check when Redis is unavailable."""
-        mock_redis_client.ping.side_effect = redis.RedisError("Redis connection failed")
+        async def raise_error():
+            raise redis.RedisError("Redis connection failed")
+        mock_redis_client.ping = AsyncMock(side_effect=raise_error)
         
-        with patch('redis.asyncio.Redis.from_url', return_value=mock_redis_client):
+        with patch('redis.asyncio.Redis.from_url', new=mock_redis_from_url):
             response = await async_client.get("/health")
             assert response.status_code == 503
             assert response.json() == {
@@ -161,13 +174,23 @@ class TestHealthCheck:
         test_app: FastAPI,
         async_client: AsyncClient,
         mock_db_pool: AsyncMock,
-        mock_redis_client: AsyncMock
+        mock_redis_from_url
     ):
         """Test health check when database is unavailable."""
-        mock_db_pool.acquire.side_effect = asyncpg.PostgresError("Database connection failed")
+        async def raise_error(*args, **kwargs):
+            raise asyncpg.PostgresError("Database connection failed")
+        
+        class ErrorContextManager:
+            async def __aenter__(self):
+                await raise_error()
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                pass
+        
+        # Use MagicMock instead of AsyncMock for acquire
+        mock_db_pool.acquire = MagicMock(return_value=ErrorContextManager())
         test_app.state.pool = mock_db_pool
         
-        with patch('redis.asyncio.Redis.from_url', return_value=mock_redis_client):
+        with patch('redis.asyncio.Redis.from_url', new=mock_redis_from_url):
             response = await async_client.get("/health")
             assert response.status_code == 503
             assert response.json() == {
@@ -216,6 +239,24 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_db_pool_error_handling(self, mock_db_pool: AsyncMock):
         """Test database error handling."""
-        with pytest.raises(asyncpg.PostgresError):
-            async with mock_db_pool.acquire():
+        # Set up the error
+        async def raise_error(*args, **kwargs):
+            raise asyncpg.PostgresError("Database connection failed")
+        
+        class ErrorContextManager:
+            async def __aenter__(self):
+                await raise_error()
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
+        
+        # Use MagicMock to return the error context manager
+        mock_db_pool.acquire = MagicMock(return_value=ErrorContextManager())
+        
+        # Test that it raises the error
+        with pytest.raises(asyncpg.PostgresError):
+            await self._execute_query(mock_db_pool)
+    
+    async def _execute_query(self, pool):
+        """Helper method to execute a query with error handling."""
+        async with pool.acquire() as conn:
+            await conn.execute("SELECT 1")
