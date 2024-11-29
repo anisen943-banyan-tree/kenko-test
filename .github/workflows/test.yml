@@ -2,7 +2,7 @@ name: Python Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fix/health-check-tests ]
   pull_request:
     branches: [ main ]
 
@@ -52,4 +52,3 @@ jobs:
     - name: Run tests
       run: |
         pytest -v
-#small change
