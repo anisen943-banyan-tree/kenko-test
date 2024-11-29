@@ -18,7 +18,7 @@ jobs:
           POSTGRES_DB: claimsdb_test
           POSTGRES_USER: ${{ secrets.RDS_USERNAME }}
           POSTGRES_PASSWORD: ${{ secrets.RDS_PASSWORD }}
-          POSTGRES_PORT: ${{ secrets.RDS_PORT }}
+          POSTGRES_PORT: 5432
         ports:
           - 5432:5432
         options: >-
